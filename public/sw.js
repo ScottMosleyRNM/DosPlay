@@ -1,4 +1,4 @@
-const CACHE = 'dosplay-v9';
+const CACHE = 'dosplay-v10';
 const ASSETS = [
   '/DosPlay/',
   '/DosPlay/index.html',

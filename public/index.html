@@ -123,28 +123,38 @@ html, body {
    EMULATOR LAYOUT
 ═══════════════════════════════════════════ */
 #emu-wrap {
-  display: none; flex-direction: column;
+  display: none;
   width: 100%; height: 100%;
   overflow: hidden;
 }
-#emu-wrap.on { display: flex; }
+#emu-wrap.on { display: block; }
 
-/* dos-root gets all remaining space after fkey-bar and ctrl-drawer */
+/* dos-root fills full viewport minus the fixed controls at bottom */
 #dos-root {
   width: 100%;
-  flex: 1 1 0;           /* grow to fill leftover space, shrink if needed */
-  min-height: 0;         /* critical: allows flex child to shrink below content size */
+  height: calc(100vh - 48px - 240px); /* viewport - fkey-bar - dpad-drawer */
   background: #000;
   position: relative;
   overflow: hidden;
   touch-action: none;
 }
-/* js-dos fills its container — we control the container size */
+/* js-dos fills its container */
 #dos-root > div, #dos-root canvas {
   width: 100% !important;
   height: 100% !important;
   image-rendering: pixelated;
 }
+
+/* Controls pinned to bottom of screen, always visible */
+#controls-fixed {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 50;
+  background: var(--surf);
+}
+
+/* Hide controls when game not running */
+#controls-fixed.hidden { display: none; }
 
 /* ═══════════════════════════════════════════
    STICKY F-KEY BAR
@@ -399,66 +409,73 @@ body.ios-kb-open #fkey-bar {
     <!-- js-dos renders here — fills all space above the bars -->
     <div id="dos-root"></div>
 
-    <!-- ── STICKY F-KEY BAR (always visible) ── -->
-    <div id="fkey-bar">
-      <div class="sfk-dpad" id="fkey-dpad-btn" onclick="toggleIOSKeyboard()">⌨</div>
-      <div id="fkey-bar-scroll">
-        <div class="sfk esc-k"  ontouchstart="kd(this,event,'Escape')" ontouchend="ku(this,event,'Escape')">ESC</div>
-        <div class="sfk sep"></div>
-        <div class="sfk" ontouchstart="kd(this,event,'F1')"  ontouchend="ku(this,event,'F1')">F1</div>
-        <div class="sfk" ontouchstart="kd(this,event,'F2')"  ontouchend="ku(this,event,'F2')">F2</div>
-        <div class="sfk" ontouchstart="kd(this,event,'F3')"  ontouchend="ku(this,event,'F3')">F3</div>
-        <div class="sfk" ontouchstart="kd(this,event,'F4')"  ontouchend="ku(this,event,'F4')">F4</div>
-        <div class="sfk" ontouchstart="kd(this,event,'F5')"  ontouchend="ku(this,event,'F5')">F5</div>
-        <div class="sfk" ontouchstart="kd(this,event,'F6')"  ontouchend="ku(this,event,'F6')">F6</div>
-        <div class="sfk" ontouchstart="kd(this,event,'F7')"  ontouchend="ku(this,event,'F7')">F7</div>
-        <div class="sfk" ontouchstart="kd(this,event,'F8')"  ontouchend="ku(this,event,'F8')">F8</div>
-        <div class="sfk" ontouchstart="kd(this,event,'F9')"  ontouchend="ku(this,event,'F9')">F9</div>
-        <div class="sfk" ontouchstart="kd(this,event,'F10')" ontouchend="ku(this,event,'F10')">F10</div>
-      </div>
+  </div><!-- /emu-wrap -->
+
+</div><!-- /app -->
+
+<!-- ── CONTROLS: fixed to bottom, always on top of everything ── -->
+<div id="controls-fixed" class="hidden">
+
+  <!-- ── STICKY F-KEY BAR ── -->
+  <div id="fkey-bar">
+    <div class="sfk-dpad" id="fkey-dpad-btn" onclick="toggleIOSKeyboard()">⌨</div>
+    <div id="fkey-bar-scroll">
+      <div class="sfk esc-k"  ontouchstart="kd(this,event,'Escape')" ontouchend="ku(this,event,'Escape')">ESC</div>
+      <div class="sfk sep"></div>
+      <div class="sfk" ontouchstart="kd(this,event,'F1')"  ontouchend="ku(this,event,'F1')">F1</div>
+      <div class="sfk" ontouchstart="kd(this,event,'F2')"  ontouchend="ku(this,event,'F2')">F2</div>
+      <div class="sfk" ontouchstart="kd(this,event,'F3')"  ontouchend="ku(this,event,'F3')">F3</div>
+      <div class="sfk" ontouchstart="kd(this,event,'F4')"  ontouchend="ku(this,event,'F4')">F4</div>
+      <div class="sfk" ontouchstart="kd(this,event,'F5')"  ontouchend="ku(this,event,'F5')">F5</div>
+      <div class="sfk" ontouchstart="kd(this,event,'F6')"  ontouchend="ku(this,event,'F6')">F6</div>
+      <div class="sfk" ontouchstart="kd(this,event,'F7')"  ontouchend="ku(this,event,'F7')">F7</div>
+      <div class="sfk" ontouchstart="kd(this,event,'F8')"  ontouchend="ku(this,event,'F8')">F8</div>
+      <div class="sfk" ontouchstart="kd(this,event,'F9')"  ontouchend="ku(this,event,'F9')">F9</div>
+      <div class="sfk" ontouchstart="kd(this,event,'F10')" ontouchend="ku(this,event,'F10')">F10</div>
+    </div>
+  </div>
+
+  <!-- ── CONTROL DRAWER (D-pad + action buttons) ── -->
+  <div id="ctrl-drawer" class="h-dpad">
+
+    <!-- Tab bar -->
+    <div id="ctrl-tabs">
+      <div class="tab active" id="tab-dpad" onclick="switchTab('dpad')">D-PAD</div>
+      <div class="tab" id="tab-hide" onclick="switchTab('hide')">▾</div>
+      <div class="tab tab-save" id="tab-save-btn" onclick="saveState()">💾 SAVE</div>
+      <div class="tab tab-load" id="tab-load-btn" onclick="loadState()">📂 LOAD</div>
+      <div class="tab" id="tab-eject" onclick="ejectGame()">⏏</div>
     </div>
 
-    <!-- ── CONTROL DRAWER (D-pad + action buttons) ── -->
-    <div id="ctrl-drawer" class="h-dpad">
+    <!-- ── D-PAD PANEL (action buttons LEFT, dpad RIGHT) ── -->
+    <div class="panel show" id="panel-dpad">
 
-      <!-- Tab bar -->
-      <div id="ctrl-tabs">
-        <div class="tab active" id="tab-dpad" onclick="switchTab('dpad')">D-PAD</div>
-        <div class="tab" id="tab-hide" onclick="switchTab('hide')">▾</div>
-        <div class="tab tab-save" id="tab-save-btn" onclick="saveState()">💾 SAVE</div>
-        <div class="tab tab-load" id="tab-load-btn" onclick="loadState()">📂 LOAD</div>
-        <div class="tab" id="tab-eject" onclick="ejectGame()">⏏</div>
+      <!-- Left: action buttons -->
+      <div id="quick-btns">
+        <div class="qb grn" ontouchstart="kd(this,event,'Enter')"  ontouchend="ku(this,event,'Enter')">ENTER</div>
+        <div class="qb red" ontouchstart="kd(this,event,'Escape')" ontouchend="ku(this,event,'Escape')">ESC</div>
+        <div class="qb"     ontouchstart="kd(this,event,' ')"      ontouchend="ku(this,event,' ')">SPACE</div>
+        <div class="qb"     ontouchstart="kd(this,event,'Tab')"    ontouchend="ku(this,event,'Tab')">TAB</div>
       </div>
 
-      <!-- ── D-PAD PANEL (action buttons LEFT, dpad RIGHT) ── -->
-      <div class="panel show" id="panel-dpad">
+      <!-- Right: D-pad -->
+      <div id="dpad">
+        <div></div>
+        <div class="dp" data-key="ArrowUp"    ontouchstart="kd(this,event)" ontouchend="ku(this,event)">▲</div>
+        <div></div>
+        <div class="dp" data-key="ArrowLeft"  ontouchstart="kd(this,event)" ontouchend="ku(this,event)">◀</div>
+        <div class="dp dp-mid"></div>
+        <div class="dp" data-key="ArrowRight" ontouchstart="kd(this,event)" ontouchend="ku(this,event)">▶</div>
+        <div></div>
+        <div class="dp" data-key="ArrowDown"  ontouchstart="kd(this,event)" ontouchend="ku(this,event)">▼</div>
+        <div></div>
+      </div>
 
-        <!-- Left: action buttons -->
-        <div id="quick-btns">
-          <div class="qb grn" ontouchstart="kd(this,event,'Enter')"  ontouchend="ku(this,event,'Enter')">ENTER</div>
-          <div class="qb red" ontouchstart="kd(this,event,'Escape')" ontouchend="ku(this,event,'Escape')">ESC</div>
-          <div class="qb"     ontouchstart="kd(this,event,' ')"      ontouchend="ku(this,event,' ')">SPACE</div>
-          <div class="qb"     ontouchstart="kd(this,event,'Tab')"    ontouchend="ku(this,event,'Tab')">TAB</div>
-        </div>
+    </div><!-- /panel-dpad -->
 
-        <!-- Right: D-pad -->
-        <div id="dpad">
-          <div></div>
-          <div class="dp" data-key="ArrowUp"    ontouchstart="kd(this,event)" ontouchend="ku(this,event)">▲</div>
-          <div></div>
-          <div class="dp" data-key="ArrowLeft"  ontouchstart="kd(this,event)" ontouchend="ku(this,event)">◀</div>
-          <div class="dp dp-mid"></div>
-          <div class="dp" data-key="ArrowRight" ontouchstart="kd(this,event)" ontouchend="ku(this,event)">▶</div>
-          <div></div>
-          <div class="dp" data-key="ArrowDown"  ontouchstart="kd(this,event)" ontouchend="ku(this,event)">▼</div>
-          <div></div>
-        </div>
+  </div><!-- /ctrl-drawer -->
 
-      </div><!-- /panel-dpad -->
-
-    </div><!-- /ctrl-drawer -->
-
-  </div><!-- /emu-wrap -->
+</div><!-- /controls-fixed -->
 
 </div><!-- /app -->
 
@@ -531,6 +548,7 @@ async function loadGame(file) {
     console.error('[DOS/PLAY] loadGame error:', err);
     // Show launch screen again so user can retry
     document.getElementById('emu-wrap').classList.remove('on');
+  document.getElementById('controls-fixed').classList.add('hidden');
     document.getElementById('launch').classList.remove('hide');
   }
 }
@@ -547,6 +565,7 @@ async function startDos(bytes, ext, filename) {
 
   document.getElementById('launch').classList.add('hide');
   document.getElementById('emu-wrap').classList.add('on');
+  document.getElementById('controls-fixed').classList.remove('hidden');
 
   showLoading('BUILDING BUNDLE');
 
@@ -563,6 +582,7 @@ async function startDos(bytes, ext, filename) {
     hideLoading();
     showErr('Bundle error: ' + (err.message || err));
     document.getElementById('emu-wrap').classList.remove('on');
+  document.getElementById('controls-fixed').classList.add('hidden');
     document.getElementById('launch').classList.remove('hide');
     return;
   }
@@ -1005,6 +1025,7 @@ async function ejectGame() {
   }
   document.getElementById('dos-root').innerHTML = '';
   document.getElementById('emu-wrap').classList.remove('on');
+  document.getElementById('controls-fixed').classList.add('hidden');
   document.getElementById('launch').classList.remove('hide');
   toast('Game ejected.');
 }
