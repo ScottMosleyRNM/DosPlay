@@ -7,12 +7,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="DOS/PLAY">
 <meta name="theme-color" content="#0a0a0f">
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="/DosPlay/manifest.json">
 <title>DOS/PLAY</title>
 
 <!-- js-dos v8 — bundled locally, no CDN -->
-<link rel="stylesheet" href="/js-dos.css">
-<script src="/js-dos.js"></script>
+<link rel="stylesheet" href="/DosPlay/js-dos.css">
+<script src="/DosPlay/js-dos.js"></script>
 
 <style>
 /* ═══════════════════════════════════════════
@@ -487,7 +487,7 @@ let dosInstance = null;
 
 // ── PWA Service Worker ──────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(console.error);
+  navigator.serviceWorker.register('/DosPlay/sw.js').catch(console.error);
 }
 
 // ── iOS install hint ────────────────────────────────────────
@@ -577,7 +577,7 @@ async function startDos(bytes, ext, filename) {
   showLoading('STARTING DOSBOX');
 
   const opts = {
-    pathPrefix: '/emulators/',
+    pathPrefix: '/DosPlay/emulators/',
     noCloud: true,
     noNetworking: true,
     workerThread: true,
