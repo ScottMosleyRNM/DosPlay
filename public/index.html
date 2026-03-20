@@ -129,10 +129,11 @@ html, body {
 }
 #emu-wrap.on { display: flex; }
 
-/* dos-root height is set explicitly by JS before Dos() is called */
+/* dos-root gets all remaining space after fkey-bar and ctrl-drawer */
 #dos-root {
   width: 100%;
-  flex-shrink: 0;
+  flex: 1 1 0;           /* grow to fill leftover space, shrink if needed */
+  min-height: 0;         /* critical: allows flex child to shrink below content size */
   background: #000;
   position: relative;
   overflow: hidden;
@@ -581,13 +582,6 @@ async function startDos(bytes, ext, filename) {
 
   const blob = new Blob([bundleBytes], { type: 'application/zip' });
   opts.url = URL.createObjectURL(blob);
-
-  // Set explicit height on dos-root BEFORE Dos() initializes,
-  // so js-dos fills our container rather than the full viewport.
-  // Controls: fkey-bar=48px, ctrl-drawer=240px (dpad open)
-  const controlsH = 48 + 240;
-  const availH = (window.visualViewport?.height || window.innerHeight) - controlsH;
-  root.style.height = Math.max(availH, 120) + 'px';
 
   dosInstance = window.Dos(root, opts);
   hideLoading();
