@@ -129,30 +129,19 @@ html, body {
 }
 #emu-wrap.on { display: flex; }
 
-/* DOS canvas container — shrinks to fit canvas, never steals space from controls */
+/* dos-root height is set explicitly by JS before Dos() is called */
 #dos-root {
   width: 100%;
-  flex: 0 0 auto;        /* don't grow OR shrink beyond canvas natural size */
+  flex-shrink: 0;
   background: #000;
   position: relative;
   overflow: hidden;
   touch-action: none;
 }
-/* js-dos kiosk mode renders a div wrapping a canvas */
-#dos-root > div {
+/* js-dos fills its container — we control the container size */
+#dos-root > div, #dos-root canvas {
   width: 100% !important;
-  height: auto !important;
-}
-#dos-root canvas {
-  display: block !important;
-  width: 100% !important;
-  height: auto !important;
-  /* Cap height so controls always fit on screen:
-     100dvh minus fkey-bar(48px) minus ctrl-tabs(36px) minus dpad(240px) */
-  max-height: calc(100dvh - 48px - 36px - 240px) !important;
-  aspect-ratio: 4 / 3;
-  object-fit: contain;
-  object-position: top center;
+  height: 100% !important;
   image-rendering: pixelated;
 }
 
@@ -592,6 +581,13 @@ async function startDos(bytes, ext, filename) {
 
   const blob = new Blob([bundleBytes], { type: 'application/zip' });
   opts.url = URL.createObjectURL(blob);
+
+  // Set explicit height on dos-root BEFORE Dos() initializes,
+  // so js-dos fills our container rather than the full viewport.
+  // Controls: fkey-bar=48px, ctrl-drawer=240px (dpad open)
+  const controlsH = 48 + 240;
+  const availH = (window.visualViewport?.height || window.innerHeight) - controlsH;
+  root.style.height = Math.max(availH, 120) + 'px';
 
   dosInstance = window.Dos(root, opts);
   hideLoading();
