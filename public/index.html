@@ -544,10 +544,10 @@ async function loadGame(file) {
 
 // ── Start js-dos v8 ──────────────────────────────────────────
 async function startDos(bytes, ext, filename) {
-  if (dosInstance) {
+  if (dosInstance && typeof dosInstance.stop === 'function') {
     try { await dosInstance.stop(); } catch(e) {}
-    dosInstance = null;
   }
+  dosInstance = null;
 
   const root = document.getElementById('dos-root');
   root.innerHTML = '';
