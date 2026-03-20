@@ -37,10 +37,10 @@
 }
 
 html, body {
-  width: 100%; height: 100%; overflow: hidden;
+  width: 100%; height: 100%;
   background: var(--bg); color: var(--text);
   font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  touch-action: pan-x pan-y; /* allow scrolling on scroll containers */
+  touch-action: pan-x pan-y;
 }
 
 /* ═══════════════════════════════════════════
@@ -128,7 +128,6 @@ html, body {
 #emu-wrap {
   display: none;
   width: 100%; height: 100%;
-  overflow: hidden;
 }
 #emu-wrap.on { display: block; }
 
@@ -152,7 +151,7 @@ html, body {
 #controls-fixed {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  z-index: 50;
+  z-index: 9999;
   background: var(--surf);
 }
 
@@ -416,7 +415,7 @@ body.ios-kb-open #fkey-bar {
 
 </div><!-- /app -->
 
-<!-- ── CONTROLS: fixed to bottom, always on top of everything ── -->
+<!-- ── CONTROLS: fixed to bottom of viewport, direct child of body ── -->
 <div id="controls-fixed" class="hidden">
 
   <!-- ── STICKY F-KEY BAR ── -->
@@ -479,8 +478,6 @@ body.ios-kb-open #fkey-bar {
   </div><!-- /ctrl-drawer -->
 
 </div><!-- /controls-fixed -->
-
-</div><!-- /app -->
 
 <!-- Loading + Toast -->
 <div id="loading"><div class="spin"></div><div id="load-txt">LOADING</div></div>
