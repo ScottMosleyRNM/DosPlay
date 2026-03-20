@@ -582,6 +582,15 @@ async function startDos(bytes, ext, filename) {
   document.getElementById('launch').classList.add('hide');
   document.getElementById('emu-wrap').classList.add('on');
   document.getElementById('controls-fixed').classList.remove('hidden');
+  // Force visibility with inline style as belt-and-suspenders
+  const cf = document.getElementById('controls-fixed');
+  cf.style.cssText = 'display:block !important; position:fixed !important; bottom:0 !important; left:0 !important; right:0 !important; z-index:9999 !important; background:#1a1a2e !important;';
+  // Set game height to viewport minus controls
+  setTimeout(() => {
+    const ctrlH = cf.offsetHeight || 288;
+    const gameH = window.innerHeight - ctrlH;
+    document.getElementById('dos-root').style.height = Math.max(gameH, 100) + 'px';
+  }, 50);
 
   showLoading('BUILDING BUNDLE');
 
