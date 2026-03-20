@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DOS/PLAY">
+<meta name="theme-color" content="#0a0a0f">
+<link rel="manifest" href="/manifest.json">
+<title>DOS/PLAY</title>
+
+<!-- js-dos v8 — bundled locally, no CDN -->
+<link rel="stylesheet" href="/js-dos.css">
+<script src="/js-dos.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════
+   RESET & ROOT
+═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg:     #0a0a0f;
+  --surf:   #111118;
+  --bord:   #1e1e2e;
+  --acc:    #00e5ff;
+  --acc2:   #ff3d71;
+  --acc3:   #a8ff3e;
+  --amber:  #ffb347;
+  --text:   #c8d6e5;
+  --dim:    #4a5568;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  touch-action: pan-x pan-y; /* allow scrolling on scroll containers */
+}
+
+/* ═══════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════ */
+#app {
+  display: flex; flex-direction: column;
+  width: 100%; height: 100%;
+  /* Account for iOS safe areas */
+  padding-bottom: var(--safe-b);
+}
+
+/* ═══════════════════════════════════════════
+   LAUNCH SCREEN
+═══════════════════════════════════════════ */
+#launch {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: var(--bg); padding: 20px; gap: 0;
+  transition: opacity 0.3s;
+}
+#launch.hide { opacity: 0; pointer-events: none; }
+
+.logo { text-align: center; margin-bottom: 32px; }
+.logo-pre {
+  font-size: 10px; color: var(--dim); letter-spacing: 6px;
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.logo-big {
+  font-size: clamp(40px, 14vw, 68px); font-weight: 900;
+  color: var(--acc); letter-spacing: 3px; line-height: 1;
+  text-shadow: 0 0 24px rgba(0,229,255,0.5), 0 0 60px rgba(0,229,255,0.15);
+}
+.logo-slash { color: var(--acc2); }
+.logo-sub {
+  font-size: 11px; color: var(--amber); letter-spacing: 8px;
+  text-transform: uppercase; margin-top: 8px;
+}
+
+#drop-zone {
+  width: 100%; max-width: 380px;
+  border: 2px dashed var(--bord); border-radius: 12px;
+  padding: 28px 16px; text-align: center; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative; overflow: hidden;
+}
+#drop-zone::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, rgba(0,229,255,0.04) 0%, transparent 70%);
+}
+#drop-zone.over { border-color: var(--acc); background: rgba(0,229,255,0.04); }
+.dz-icon { font-size: 40px; margin-bottom: 12px; display: block; }
+.dz-title { font-size: 14px; font-weight: 700; letter-spacing: 2px; margin-bottom: 6px; color: var(--text); }
+.dz-hint { font-size: 12px; color: var(--dim); line-height: 1.7; }
+.dz-hint em { color: var(--acc); font-style: normal; }
+.badges { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+.badge { font-size: 11px; padding: 2px 9px; border-radius: 20px; border: 1px solid; letter-spacing: 1px; }
+.b-z { border-color: var(--acc); color: var(--acc); }
+.b-i { border-color: var(--amber); color: var(--amber); }
+.b-e { border-color: var(--acc3); color: var(--acc3); }
+#file-input { display: none; }
+
+.tips { width: 100%; max-width: 380px; margin-top: 24px; }
+.tips-hd {
+  font-size: 10px; color: var(--dim); letter-spacing: 3px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.tips-hd::after { content: ''; flex: 1; height: 1px; background: var(--bord); }
+.tip { font-size: 11px; color: var(--dim); padding: 5px 0; border-bottom: 1px solid var(--bord); line-height: 1.5; }
+.tip .hi { color: var(--acc); }
+.tip .am { color: var(--amber); }
+
+#err-msg {
+  display: none; width: 100%; max-width: 380px; margin-top: 14px;
+  background: rgba(255,61,113,0.1); border: 1px solid var(--acc2);
+  border-radius: 8px; padding: 10px 14px;
+  font-size: 12px; color: var(--acc2); line-height: 1.6; white-space: pre-wrap;
+}
+#err-msg.show { display: block; }
+
+/* ═══════════════════════════════════════════
+   EMULATOR LAYOUT
+═══════════════════════════════════════════ */
+/* DOS canvas — pinned to top, correct 4:3 aspect ratio */
+#dos-root {
+  width: 100%;
+  flex-shrink: 0;
+  background: #000; position: relative;
+  overflow: hidden;
+  touch-action: none;
+}
+#emu-wrap {
+  display: none; flex-direction: column;
+  width: 100%; height: 100%;
+  overflow: hidden;
+}
+#emu-wrap.on { display: flex; }
+/* js-dos kiosk mode renders just a canvas */
+#dos-root > div {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: flex-start !important;
+}
+#dos-root canvas {
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: 100% !important;
+  object-fit: contain;
+  object-position: top center;
+  image-rendering: pixelated;
+}
+
+/* ═══════════════════════════════════════════
+   STICKY F-KEY BAR
+═══════════════════════════════════════════ */
+#fkey-bar {
+  flex-shrink: 0;
+  background: #0d0d18;
+  border-top: 1px solid var(--bord);
+  display: flex; align-items: center;
+  height: 48px;
+  overflow: hidden; /* outer container doesn't scroll */
+  position: relative;
+}
+/* The scrollable inner region */
+#fkey-bar-scroll {
+  display: flex; align-items: center;
+  gap: 4px; padding: 6px 8px 6px 4px;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex: 1;
+  height: 100%;
+}
+#fkey-bar-scroll::-webkit-scrollbar { display: none; }
+/* The sticky 🕹 button — never scrolls away */
+.sfk-dpad {
+  flex-shrink: 0;
+  font-size: 18px;
+  padding: 6px 10px;
+  margin-left: 6px;
+  border-radius: 6px;
+  background: rgba(0,229,255,0.08);
+  border: 1px solid rgba(0,229,255,0.3);
+  color: var(--acc);
+  cursor: pointer; touch-action: manipulation; user-select: none;
+  height: 36px; display: flex; align-items: center;
+}
+.sfk-dpad:active { background: rgba(0,229,255,0.2); }
+.sfk {
+  flex-shrink: 0;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+  padding: 8px 11px; border-radius: 6px;
+  background: #181820; border: 1px solid rgba(255,179,71,0.2);
+  color: var(--amber); text-align: center;
+  cursor: pointer; touch-action: manipulation; user-select: none;
+  transition: background 0.05s;
+  white-space: nowrap;
+}
+.sfk:active, .sfk.lit { background: rgba(255,179,71,0.18); border-color: var(--amber); }
+.sfk.esc-k { color: var(--acc2); border-color: rgba(255,61,113,0.25); }
+.sfk.esc-k:active { background: rgba(255,61,113,0.15); border-color: var(--acc2); }
+.sfk.sep { width: 1px; background: var(--bord); padding: 0; border: none; cursor: default; align-self: stretch; margin: 4px 2px; }
+
+/* ═══════════════════════════════════════════
+   CONTROL DRAWER — D-pad + iOS keyboard toggle
+═══════════════════════════════════════════ */
+#ctrl-drawer {
+  flex-shrink: 0;
+  background: var(--surf);
+  border-top: 1px solid var(--bord);
+  transition: height 0.22s ease;
+  overflow: hidden;
+}
+#ctrl-drawer.h-collapsed { height: 36px; }
+#ctrl-drawer.h-dpad      { height: 240px; }
+
+/* When iOS keyboard opens: fkey-bar fixes to bottom of visual viewport */
+body.ios-kb-open #fkey-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0; right: 0;
+  z-index: 100;
+  border-top: 2px solid var(--acc);
+  /* Use visualViewport offset via JS — fallback is bottom:0 which is close enough */
+}
+
+/* ── Tab bar ── */
+#ctrl-tabs {
+  height: 36px;
+  display: flex; align-items: center;
+  padding: 0 6px; gap: 3px;
+  background: var(--surf);
+  border-bottom: 1px solid var(--bord);
+  flex-shrink: 0; user-select: none;
+  overflow: hidden; /* never let tabs spill out */
+}
+.tab {
+  font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+  padding: 4px 8px; border-radius: 4px; cursor: pointer;
+  border: 1px solid transparent; color: var(--dim);
+  touch-action: manipulation; white-space: nowrap; flex-shrink: 0;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.tab.active { background: rgba(0,229,255,0.12); color: var(--acc); border-color: rgba(0,229,255,0.3); }
+.tab:active { background: rgba(0,229,255,0.2); color: var(--acc); }
+#tab-hide  { margin-left: auto; color: var(--dim); }
+#tab-eject { color: var(--acc2); border-color: rgba(255,61,113,0.2); }
+#tab-eject:active { background: rgba(255,61,113,0.15); border-color: var(--acc2); color: var(--acc2); }
+.tab-save { color: var(--acc3); border-color: rgba(168,255,62,0.2); }
+.tab-save:active { background: rgba(168,255,62,0.12); border-color: var(--acc3); color: var(--acc3); }
+.tab-load { color: var(--amber); border-color: rgba(255,179,71,0.2); }
+.tab-load:active { background: rgba(255,179,71,0.12); border-color: var(--amber); color: var(--amber); }
+
+/* ── D-PAD PANEL ── */
+.panel { display: none; height: calc(100% - 36px); padding: 8px 12px; }
+.panel.show { display: flex; }
+
+/* D-pad on RIGHT, action buttons on LEFT */
+#panel-dpad {
+  align-items: center; gap: 12px;
+  flex-direction: row;
+}
+
+/* Left side: compact action buttons — smaller, D-pad gets priority */
+#quick-btns {
+  display: flex; flex-direction: column; gap: 4px;
+  width: 72px; flex-shrink: 0; order: 1;
+}
+.qb {
+  font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;
+  padding: 0 6px; border-radius: 6px; height: 44px;
+  border: 1px solid var(--bord); background: #181820; color: var(--dim);
+  cursor: pointer; touch-action: manipulation; user-select: none;
+  text-align: center; transition: background 0.06s, color 0.06s;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.qb:active { background: rgba(0,229,255,0.1); color: var(--acc); border-color: var(--acc); }
+.qb.grn { color: var(--acc3); border-color: rgba(168,255,62,0.25); }
+.qb.grn:active { background: rgba(168,255,62,0.12); border-color: var(--acc3); }
+.qb.red { color: var(--acc2); border-color: rgba(255,61,113,0.25); }
+.qb.red:active { background: rgba(255,61,113,0.12); border-color: var(--acc2); }
+.qb.amb { color: var(--amber); border-color: rgba(255,179,71,0.25); }
+.qb.amb:active { background: rgba(255,179,71,0.12); border-color: var(--amber); }
+
+/* D-pad on right — larger, takes remaining space */
+#dpad {
+  display: grid; grid-template: repeat(3,1fr) / repeat(3,1fr);
+  gap: 4px; flex: 1; order: 2;
+  /* Fill full panel height minus padding */
+  height: 100%;
+  max-width: calc(100% - 84px); /* account for quick-btns + gap */
+}
+.dp {
+  border-radius: 8px; background: #181820;
+  border: 1px solid var(--bord); color: var(--dim);
+  font-size: 22px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; touch-action: manipulation; user-select: none;
+  transition: background 0.05s, color 0.05s, transform 0.05s;
+  min-width: 0; min-height: 0;
+}
+.dp:active, .dp.lit {
+  background: rgba(0,229,255,0.12); border-color: var(--acc);
+  color: var(--acc); transform: scale(0.9);
+  box-shadow: 0 0 10px rgba(0,229,255,0.3);
+}
+.dp-mid { background: #0f0f16 !important; border-color: #0f0f16 !important; cursor: default; }
+
+/* ═══════════════════════════════════════════
+   LOADING OVERLAY
+═══════════════════════════════════════════ */
+#loading {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.88); flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+#loading.show { display: flex; }
+.spin {
+  width: 42px; height: 42px;
+  border: 3px solid var(--bord); border-top-color: var(--acc);
+  border-radius: 50%; animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#load-txt {
+  font-size: 12px; color: var(--acc); letter-spacing: 3px;
+  text-transform: uppercase; animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+#toast {
+  position: fixed; bottom: 50px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: #16162a; border: 1px solid var(--acc);
+  color: var(--acc); font-size: 12px; letter-spacing: 1px;
+  padding: 6px 16px; border-radius: 20px;
+  opacity: 0; transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none; z-index: 400; white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ═══════════════════════════════════════════
+   PWA INSTALL BANNER (iOS hint)
+═══════════════════════════════════════════ */
+#install-hint {
+  display: none; position: fixed; bottom: 20px; left: 16px; right: 16px;
+  background: #1a1a2e; border: 1px solid var(--acc);
+  border-radius: 10px; padding: 12px 16px; z-index: 500;
+  font-size: 12px; color: var(--text); line-height: 1.5;
+}
+#install-hint.show { display: block; }
+#install-hint strong { color: var(--acc); }
+#dismiss-hint {
+  float: right; color: var(--acc2); cursor: pointer; font-size: 16px;
+  line-height: 1; margin-top: -2px;
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════ LAUNCH SCREEN ═══════════ -->
+  <div id="launch">
+    <div class="logo">
+      <div class="logo-pre">Sierra · id · Apogee · LucasArts</div>
+      <div class="logo-big">DOS<span class="logo-slash">/</span>PLAY</div>
+      <div class="logo-sub">Mobile Emulator</div>
+    </div>
+
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <span class="dz-icon">💾</span>
+      <div class="dz-title">LOAD A GAME</div>
+      <div class="dz-hint">
+        Tap to choose from your device<br>
+        <em>.zip</em> of your game folder · <em>.img</em> disk image · <em>.exe</em>
+      </div>
+      <div class="badges">
+        <span class="badge b-z">.ZIP</span>
+        <span class="badge b-i">.IMG &nbsp;.IMA</span>
+        <span class="badge b-e">.EXE &nbsp;.COM</span>
+      </div>
+    </div>
+    <input type="file" id="file-input" accept=".zip,.img,.ima,.exe,.com,.bat" style="display:none;position:absolute;top:-9999px;left:-9999px;width:0;height:0;opacity:0;">
+
+    <div id="err-msg"></div>
+
+    <div class="tips">
+      <div class="tips-hd">Tips</div>
+      <div class="tip"><span class="hi">ZIP</span>&nbsp; Zip your game folder. Works great for Sierra, LucasArts, id games.</div>
+      <div class="tip"><span class="hi">CONFIG</span>&nbsp; Add a <em>dosbox.conf</em> with <em>[autoexec]</em> to auto-launch your game.</div>
+      <div class="tip"><span class="am">🔒</span>&nbsp; Nothing uploads. All emulation runs locally in your browser.</div>
+      <div class="tip"><span class="am">📲</span>&nbsp; Add to Home Screen (Share → Add to Home Screen) to use as an app.</div>
+    </div>
+  </div>
+
+  <!-- ═══════════ EMULATOR ═══════════ -->
+  <div id="emu-wrap">
+
+    <!-- js-dos renders here — fills all space above the bars -->
+    <div id="dos-root"></div>
+
+    <!-- ── STICKY F-KEY BAR (always visible) ── -->
+    <div id="fkey-bar">
+      <div class="sfk-dpad" id="fkey-dpad-btn" onclick="toggleIOSKeyboard()">⌨</div>
+      <div id="fkey-bar-scroll">
+        <div class="sfk esc-k"  ontouchstart="kd(this,event,'Escape')" ontouchend="ku(this,event,'Escape')">ESC</div>
+        <div class="sfk sep"></div>
+        <div class="sfk" ontouchstart="kd(this,event,'F1')"  ontouchend="ku(this,event,'F1')">F1</div>
+        <div class="sfk" ontouchstart="kd(this,event,'F2')"  ontouchend="ku(this,event,'F2')">F2</div>
+        <div class="sfk" ontouchstart="kd(this,event,'F3')"  ontouchend="ku(this,event,'F3')">F3</div>
+        <div class="sfk" ontouchstart="kd(this,event,'F4')"  ontouchend="ku(this,event,'F4')">F4</div>
+        <div class="sfk" ontouchstart="kd(this,event,'F5')"  ontouchend="ku(this,event,'F5')">F5</div>
+        <div class="sfk" ontouchstart="kd(this,event,'F6')"  ontouchend="ku(this,event,'F6')">F6</div>
+        <div class="sfk" ontouchstart="kd(this,event,'F7')"  ontouchend="ku(this,event,'F7')">F7</div>
+        <div class="sfk" ontouchstart="kd(this,event,'F8')"  ontouchend="ku(this,event,'F8')">F8</div>
+        <div class="sfk" ontouchstart="kd(this,event,'F9')"  ontouchend="ku(this,event,'F9')">F9</div>
+        <div class="sfk" ontouchstart="kd(this,event,'F10')" ontouchend="ku(this,event,'F10')">F10</div>
+      </div>
+    </div>
+
+    <!-- ── CONTROL DRAWER (D-pad + action buttons) ── -->
+    <div id="ctrl-drawer" class="h-dpad">
+
+      <!-- Tab bar -->
+      <div id="ctrl-tabs">
+        <div class="tab active" id="tab-dpad" onclick="switchTab('dpad')">D-PAD</div>
+        <div class="tab" id="tab-hide" onclick="switchTab('hide')">▾</div>
+        <div class="tab tab-save" id="tab-save-btn" onclick="saveState()">💾 SAVE</div>
+        <div class="tab tab-load" id="tab-load-btn" onclick="loadState()">📂 LOAD</div>
+        <div class="tab" id="tab-eject" onclick="ejectGame()">⏏</div>
+      </div>
+
+      <!-- ── D-PAD PANEL (action buttons LEFT, dpad RIGHT) ── -->
+      <div class="panel show" id="panel-dpad">
+
+        <!-- Left: action buttons -->
+        <div id="quick-btns">
+          <div class="qb grn" ontouchstart="kd(this,event,'Enter')"  ontouchend="ku(this,event,'Enter')">ENTER</div>
+          <div class="qb red" ontouchstart="kd(this,event,'Escape')" ontouchend="ku(this,event,'Escape')">ESC</div>
+          <div class="qb"     ontouchstart="kd(this,event,' ')"      ontouchend="ku(this,event,' ')">SPACE</div>
+          <div class="qb"     ontouchstart="kd(this,event,'Tab')"    ontouchend="ku(this,event,'Tab')">TAB</div>
+        </div>
+
+        <!-- Right: D-pad -->
+        <div id="dpad">
+          <div></div>
+          <div class="dp" data-key="ArrowUp"    ontouchstart="kd(this,event)" ontouchend="ku(this,event)">▲</div>
+          <div></div>
+          <div class="dp" data-key="ArrowLeft"  ontouchstart="kd(this,event)" ontouchend="ku(this,event)">◀</div>
+          <div class="dp dp-mid"></div>
+          <div class="dp" data-key="ArrowRight" ontouchstart="kd(this,event)" ontouchend="ku(this,event)">▶</div>
+          <div></div>
+          <div class="dp" data-key="ArrowDown"  ontouchstart="kd(this,event)" ontouchend="ku(this,event)">▼</div>
+          <div></div>
+        </div>
+
+      </div><!-- /panel-dpad -->
+
+    </div><!-- /ctrl-drawer -->
+
+  </div><!-- /emu-wrap -->
+
+</div><!-- /app -->
+
+<!-- Loading + Toast -->
+<div id="loading"><div class="spin"></div><div id="load-txt">LOADING</div></div>
+<div id="toast"></div>
+<div id="install-hint"><span id="dismiss-hint" onclick="dismissHint()">✕</span>
+  <strong>Add to Home Screen</strong> for the best experience.<br>
+  Tap the Share icon → <em>Add to Home Screen</em>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  DOS/PLAY  —  js-dos v8 PWA wrapper
+//  All emulator WASM assets are served from /emulators/
+// ═══════════════════════════════════════════════════════════
+
+let dosInstance = null;
+
+// ── PWA Service Worker ──────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(console.error);
+}
+
+// ── iOS install hint ────────────────────────────────────────
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone;
+if (isIOS && !isStandalone && !sessionStorage.getItem('hint-dismissed')) {
+  setTimeout(() => document.getElementById('install-hint').classList.add('show'), 3000);
+}
+function dismissHint() {
+  document.getElementById('install-hint').classList.remove('show');
+  sessionStorage.setItem('hint-dismissed', '1');
+}
+
+// ── File pick & drop ────────────────────────────────────────
+const fileInput = document.getElementById('file-input');
+const dropZone  = document.getElementById('drop-zone');
+
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('over');
+  if (e.dataTransfer.files[0]) loadGame(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) loadGame(e.target.files[0]);
+  fileInput.value = '';
+});
+
+// ── Load game file ───────────────────────────────────────────
+async function loadGame(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['zip','img','ima','exe','com','bat'].includes(ext)) {
+    showErr('Unsupported file type: .' + ext + '\nPlease use a .zip of your game folder.');
+    return;
+  }
+  hideErr();
+  showLoading('READING FILE');
+
+  try {
+    const buf = await file.arrayBuffer();
+    await startDos(new Uint8Array(buf), ext, file.name);
+  } catch(err) {
+    hideLoading();
+    // Always show error on screen — never silently fail
+    const msg = err && err.message ? err.message : String(err);
+    showErr('Launch failed: ' + msg);
+    console.error('[DOS/PLAY] loadGame error:', err);
+    // Show launch screen again so user can retry
+    document.getElementById('emu-wrap').classList.remove('on');
+    document.getElementById('launch').classList.remove('hide');
+  }
+}
+
+// ── Start js-dos v8 ──────────────────────────────────────────
+async function startDos(bytes, ext, filename) {
+  if (dosInstance) {
+    try { await dosInstance.stop(); } catch(e) {}
+    dosInstance = null;
+  }
+
+  const root = document.getElementById('dos-root');
+  root.innerHTML = '';
+
+  document.getElementById('launch').classList.add('hide');
+  document.getElementById('emu-wrap').classList.add('on');
+
+  showLoading('BUILDING BUNDLE');
+
+  let bundleBytes;
+  try {
+    if (ext === 'zip') {
+      bundleBytes = await ensureJsdosBundle(bytes);
+    } else if (ext === 'exe' || ext === 'com' || ext === 'bat') {
+      bundleBytes = buildBundleFromExe(bytes, filename);
+    } else if (ext === 'img' || ext === 'ima') {
+      bundleBytes = buildBundleFromFloppy(bytes);
+    }
+  } catch(err) {
+    hideLoading();
+    showErr('Bundle error: ' + (err.message || err));
+    document.getElementById('emu-wrap').classList.remove('on');
+    document.getElementById('launch').classList.remove('hide');
+    return;
+  }
+
+  showLoading('STARTING DOSBOX');
+
+  const opts = {
+    pathPrefix: '/emulators/',
+    noCloud: true,
+    noNetworking: true,
+    workerThread: true,
+    autoStart: true,
+    kiosk: true,
+    thinSidebar: true,
+    renderAspect: 'AsIs',
+  };
+
+  const blob = new Blob([bundleBytes], { type: 'application/zip' });
+  opts.url = URL.createObjectURL(blob);
+
+  dosInstance = window.Dos(root, opts);
+  hideLoading();
+  toast('▶ ' + filename);
+}
+
+// ── Bundle builder ────────────────────────────────────────────
+// js-dos v8 requires a ZIP with .jsdos/dosbox.conf inside.
+// Strategy: scan the ZIP's central directory (no decompression needed)
+// to check if .jsdos/dosbox.conf exists. If it does, pass through.
+// If not, append the missing files using STORE compression.
+
+function ensureJsdosBundle(zipBytes) {
+  const view = new DataView(zipBytes.buffer, zipBytes.byteOffset, zipBytes.byteLength);
+
+  // Find EOCD
+  let eocd = -1;
+  for (let i = zipBytes.length - 22; i >= 0; i--) {
+    if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('Not a valid ZIP file');
+
+  const cdCount  = view.getUint16(eocd + 8, true);
+  const cdOffset = view.getUint32(eocd + 16, true);
+  const dec = new TextDecoder();
+  const names = [];
+  let pos = cdOffset;
+
+  for (let i = 0; i < cdCount; i++) {
+    if (view.getUint32(pos, true) !== 0x02014b50) break;
+    const nameLen    = view.getUint16(pos + 28, true);
+    const extraLen   = view.getUint16(pos + 30, true);
+    const commentLen = view.getUint16(pos + 32, true);
+    const name = dec.decode(zipBytes.subarray(pos + 46, pos + 46 + nameLen));
+    names.push(name.toLowerCase());
+    pos += 46 + nameLen + extraLen + commentLen;
+  }
+
+  // Already a proper jsdos bundle — pass through unchanged
+  if (names.includes('.jsdos/dosbox.conf')) {
+    return zipBytes;
+  }
+
+  // Build a correct autoexec — find exe/com/bat files, use 8.3 safe names
+  const exeNames = names.filter(n => /\.(exe|com|bat)$/.test(n));
+  const picked   = exeNames.length > 0 ? pickGameExe(exeNames) : null;
+
+  let autoexec = '[autoexec]\nmount c .\nc:\n';
+  if (picked) {
+    const parts = picked.split('/');
+    if (parts.length > 1) {
+      // Game is in a subfolder — convert folder name to 8.3
+      const safeFolder = toDos83(parts[0]);
+      const exeFile    = parts[parts.length - 1].toUpperCase();
+      autoexec += 'cd ' + safeFolder + '\n' + exeFile + '\n';
+    } else {
+      autoexec += picked.toUpperCase() + '\n';
+    }
+  }
+  // If the ZIP had its own dosbox.conf with wrong paths, we intentionally
+  // override it with our corrected one in .jsdos/dosbox.conf — js-dos
+  // uses .jsdos/dosbox.conf exclusively and ignores any root dosbox.conf.
+
+  const conf = buildDosboxConf(autoexec);
+  return appendToZip(zipBytes, [
+    { name: '.jsdos/dosbox.conf', data: strToBytes(conf) }
+  ]);
+}
+
+// Convert a long folder name to DOS 8.3 format: "POLICE_QUEST_1" → "POLICE~1"
+function toDos83(name) {
+  // Take just the last path component, strip extension
+  const base = name.replace(/\\/g, '/').split('/').pop().split('.')[0];
+  const clean = base.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  if (clean.length <= 8) return clean;
+  return clean.slice(0, 6) + '~1';
+}
+
+// Append files to an existing ZIP without touching its existing entries
+function appendToZip(existingZip, newFiles) {
+  const view = new DataView(existingZip.buffer, existingZip.byteOffset, existingZip.byteLength);
+
+  // Find EOCD
+  let eocd = -1;
+  for (let i = existingZip.length - 22; i >= 0; i--) {
+    if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+
+  const existingCdCount  = view.getUint16(eocd + 8,  true);
+  const existingCdSize   = view.getUint32(eocd + 12, true);
+  const existingCdOffset = view.getUint32(eocd + 16, true);
+
+  // The new local entries go right before the central directory
+  const localDataOffset = existingCdOffset;
+  const newLocalParts = [];
+  const newCdParts = [];
+  let addedOffset = localDataOffset;
+
+  for (const f of newFiles) {
+    const nameBytes = strToBytes(f.name);
+    const data = f.data instanceof Uint8Array ? f.data : new Uint8Array(f.data);
+    const crc  = crc32(data);
+
+    // Local file header
+    const lh = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0, true);
+    lv.setUint16(8, 0, true);   // STORE
+    lv.setUint16(10, 0, true);
+    lv.setUint16(12, 0, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, data.length, true);
+    lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);
+    lh.set(nameBytes, 30);
+    newLocalParts.push(lh, data);
+
+    // Central directory entry
+    const cd = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(cd.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, 0, true);
+    cv.setUint16(14, 0, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true);
+    cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, addedOffset, true);
+    cd.set(nameBytes, 46);
+    newCdParts.push(cd);
+
+    addedOffset += 30 + nameBytes.length + data.length;
+  }
+
+  // Existing central directory (from original ZIP)
+  const existingCd = existingZip.subarray(existingCdOffset, existingCdOffset + existingCdSize);
+
+  // New EOCD
+  const totalEntries = existingCdCount + newFiles.length;
+  const newCdBytes   = concat(newCdParts);
+  const newCdOffset  = addedOffset;
+  const totalCdSize  = existingCdSize + newCdBytes.length;
+
+  const newEocd = new Uint8Array(22);
+  const ev = new DataView(newEocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, totalEntries, true);
+  ev.setUint16(10, totalEntries, true);
+  ev.setUint32(12, totalCdSize, true);
+  ev.setUint32(16, newCdOffset, true);
+  ev.setUint16(20, 0, true);
+
+  // Assemble: existing local data + new local entries + existing CD + new CD entries + new EOCD
+  return concat([
+    existingZip.subarray(0, existingCdOffset),
+    ...newLocalParts,
+    existingCd,
+    newCdBytes,
+    newEocd,
+  ]);
+}
+
+function buildBundleFromExe(exeBytes, exeName) {
+  const autoexec = `[autoexec]\nmount c .\nc:\n${exeName.toUpperCase()}\n`;
+  return buildZip([
+    { name: exeName, data: exeBytes },
+    { name: '.jsdos/dosbox.conf', data: strToBytes(buildDosboxConf(autoexec)) },
+  ]);
+}
+
+function buildBundleFromFloppy(imgBytes) {
+  const autoexec = `[autoexec]\nimgmount a floppy.img -t floppy\na:\n`;
+  return buildZip([
+    { name: 'floppy.img', data: imgBytes },
+    { name: '.jsdos/dosbox.conf', data: strToBytes(buildDosboxConf(autoexec)) },
+  ]);
+}
+
+function strToBytes(s) {
+  return new TextEncoder().encode(s);
+}
+
+function pickGameExe(names) {
+  const avoid = /setup|install|config|patch|update|uninst/i;
+  const preferred = names.filter(n => !avoid.test(n));
+  return preferred.length > 0 ? preferred[0] : names[0];
+}
+
+function buildDosboxConf(autoexecSection) {
+  return `[sdl]
+autolock=false
+
+[dosbox]
+machine=svga_s3
+memsize=16
+
+[cpu]
+core=auto
+cputype=auto
+cycles=auto
+
+[render]
+frameskip=0
+aspect=false
+scaler=none
+
+[sblaster]
+sbtype=sb16
+sbbase=220
+irq=7
+dma=1
+hdma=5
+sbmixer=true
+oplmode=auto
+oplemu=default
+oplrate=44100
+
+[mixer]
+nosound=false
+rate=44100
+blocksize=1024
+prebuffer=20
+
+${autoexecSection}`;
+}
+
+function buildZip(files) {
+  // Minimal uncompressed ZIP (STORE method) — browsers parse these fine
+  const parts = [];
+  const centralDir = [];
+  let offset = 0;
+
+  for (const f of files) {
+    const nameBytes = strToBytes(f.name);
+    const data = f.data instanceof Uint8Array ? f.data : new Uint8Array(f.data);
+    const crc = crc32(data);
+
+    // Local file header
+    const lhSize = 30 + nameBytes.length;
+    const lh = new Uint8Array(lhSize);
+    const lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true); // signature
+    lv.setUint16(4, 20, true);          // version needed
+    lv.setUint16(6, 0, true);           // flags
+    lv.setUint16(8, 0, true);           // compression: STORE
+    lv.setUint16(10, 0, true);          // mod time
+    lv.setUint16(12, 0, true);          // mod date
+    lv.setUint32(14, crc, true);        // CRC-32
+    lv.setUint32(18, data.length, true);// compressed size
+    lv.setUint32(22, data.length, true);// uncompressed size
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);          // extra field length
+    lh.set(nameBytes, 30);
+    parts.push(lh, data);
+
+    // Central directory entry
+    const cdSize = 46 + nameBytes.length;
+    const cd = new Uint8Array(cdSize);
+    const cv = new DataView(cd.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, 0, true);
+    cv.setUint16(14, 0, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true);
+    cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
+    cd.set(nameBytes, 46);
+    centralDir.push(cd);
+
+    offset += lhSize + data.length;
+  }
+
+  const cdStart = offset;
+  const cdBytes = concat(centralDir);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdBytes.length, true);
+  ev.setUint32(16, cdStart, true);
+  ev.setUint16(20, 0, true);
+
+  return concat([...parts, cdBytes, eocd]);
+}
+
+function concat(arrays) {
+  const total = arrays.reduce((s, a) => s + a.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const a of arrays) { out.set(a, off); off += a.length; }
+  return out;
+}
+
+function crc32(data) {
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < data.length; i++) {
+    crc ^= data[i];
+    for (let j = 0; j < 8; j++)
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+// ── F-key bar manual scroll (iOS workaround) ─────────────────
+// Distinguishes tap (fire key) vs drag (scroll) by movement distance.
+// The .sfk buttons use ontouchstart/ontouchend for key firing,
+// so we only intercept at the scroll container level for scrolling.
+(function() {
+  const bar = document.getElementById('fkey-bar-scroll');
+  let startX = 0, startScroll = 0, moved = false;
+
+  bar.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX;
+    startScroll = bar.scrollLeft;
+    moved = false;
+  }, { passive: true });
+
+  bar.addEventListener('touchmove', e => {
+    if (e.touches.length !== 1) return;
+    const dx = startX - e.touches[0].clientX;
+    if (Math.abs(dx) > 8) {
+      moved = true;
+      bar.scrollLeft = startScroll + dx;
+      e.preventDefault(); // only prevent default once we're clearly scrolling
+    }
+  }, { passive: false });
+
+  bar.addEventListener('touchend', () => { moved = false; }, { passive: true });
+})();
+
+// ── Save / Load game state ────────────────────────────────────
+async function saveState() {
+  if (!dosInstance) { toast('No game running.'); return; }
+  const btn = document.getElementById('tab-save-btn');
+  const orig = btn.textContent;
+  btn.textContent = '⏳';
+  try {
+    // js-dos v8: dosInstance is the object returned by window.Dos()
+    // It exposes .save() which persists the filesystem and downloads
+    // Internally it calls ci.persist() — we replicate that here via stop/restart
+    // The correct low-level call is on the ci object stored in our dosInstance wrapper
+    const ci = dosInstance._ci || dosInstance.ci;
+    let data = null;
+    if (ci && typeof ci.persist === 'function') {
+      data = await ci.persist(false);
+    } else if (typeof dosInstance.save === 'function') {
+      await dosInstance.save();
+      btn.textContent = orig;
+      return; // save() handles download internally
+    }
+    if (!data) { toast('Nothing to save yet.'); btn.textContent = orig; return; }
+    const blob = new Blob([data], { type: 'application/zip' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'dosplay-save.jsdos';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('💾 Saved to Downloads!');
+  } catch(err) {
+    toast('Save failed: ' + (err.message || String(err)));
+    console.error('[DOS/PLAY] save error:', err);
+  }
+  btn.textContent = orig;
+}
+
+function loadState() {
+  // Create input dynamically so it's never in the DOM at rest (avoids iOS accessory bar)
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.jsdos';
+  inp.style.cssText = 'position:fixed;top:-9999px;opacity:0;';
+  inp.addEventListener('change', async e => {
+    const file = e.target.files[0];
+    document.body.removeChild(inp);
+    if (!file) return;
+    showLoading('LOADING SAVE');
+    try {
+      const buf = await file.arrayBuffer();
+      await startDos(new Uint8Array(buf), 'zip', file.name);
+      toast('📂 Save loaded!');
+    } catch(err) {
+      hideLoading();
+      showErr('Load failed: ' + (err.message || String(err)));
+    }
+  });
+  document.body.appendChild(inp);
+  inp.click();
+}
+async function ejectGame() {
+  if (dosInstance) {
+    try { await dosInstance.stop(); } catch(e) {}
+    dosInstance = null;
+  }
+  document.getElementById('dos-root').innerHTML = '';
+  document.getElementById('emu-wrap').classList.remove('on');
+  document.getElementById('launch').classList.remove('hide');
+  toast('Game ejected.');
+}
+
+// Dismiss iOS keyboard and restore D-pad
+function dismissKbShowDpad() {
+  if (iosInput) iosInput.blur();
+  setFkeyIcon('dpad');
+  switchTab('dpad');
+}
+let activeTab = 'dpad';
+
+function switchTab(name) {
+  const drawer = document.getElementById('ctrl-drawer');
+  if (name === activeTab && name !== 'hide') { name = 'hide'; }
+
+  drawer.classList.toggle('h-collapsed', name === 'hide');
+  drawer.classList.toggle('h-dpad',      name === 'dpad');
+
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('show'));
+  if (name === 'dpad') {
+    document.getElementById('panel-dpad').classList.add('show');
+  }
+
+  document.getElementById('tab-dpad').classList.toggle('active', name === 'dpad');
+  document.getElementById('tab-hide').textContent = name === 'hide' ? '▸' : '▾';
+  activeTab = name;
+}
+
+// Update the fkey-bar 🕹/⌨ toggle icon
+function setFkeyIcon(mode) {
+  // mode: 'dpad' = keyboard is hidden, show ⌨ to open it
+  //       'keyboard' = keyboard is open, show 🕹 to close it
+  const btn = document.getElementById('fkey-dpad-btn');
+  if (!btn) return;
+  btn.textContent = mode === 'keyboard' ? '🕹' : '⌨';
+}
+
+// ── iOS system keyboard (fully dynamic — no static DOM inputs) ─
+// Creating the input dynamically means iOS never counts it for
+// the ↑↓ ✓ accessory bar navigation between fields.
+let iosKbVisible = false;
+let iosInput = null;
+
+function toggleIOSKeyboard() {
+  if (iosKbVisible) {
+    if (iosInput) iosInput.blur();
+  } else {
+    // Create a fresh input each time — never sits in DOM at rest
+    if (iosInput) { try { document.body.removeChild(iosInput); } catch(e){} }
+    iosInput = document.createElement('textarea');
+    iosInput.setAttribute('autocomplete', 'off');
+    iosInput.setAttribute('autocorrect', 'off');
+    iosInput.setAttribute('autocapitalize', 'off');
+    iosInput.setAttribute('spellcheck', 'false');
+    iosInput.style.cssText = 'position:fixed;top:-300px;left:0;width:1px;height:1px;opacity:0;border:none;outline:none;resize:none;font-size:16px;pointer-events:none;z-index:-1;';
+    iosInput.setAttribute('aria-hidden', 'true');
+    iosInput.setAttribute('tabindex', '-1');
+
+    // Key forwarding
+    iosInput.addEventListener('keydown', e => {
+      e.stopPropagation();
+      fireKey(e.key, true);
+    });
+    iosInput.addEventListener('keyup', e => {
+      e.stopPropagation();
+      fireKey(e.key, false);
+    });
+    iosInput.addEventListener('input', e => {
+      const text = iosInput.value || '';
+      if (text) {
+        for (const ch of text) {
+          if (ch !== '\n') { fireKey(ch, true); fireKey(ch, false); }
+        }
+        iosInput.value = '';
+      }
+      e.stopPropagation();
+    });
+    iosInput.addEventListener('focus', onKbShow);
+    iosInput.addEventListener('blur',  onKbHide);
+
+    document.body.appendChild(iosInput);
+
+    // Briefly allow pointer events to receive focus on iOS
+    iosInput.style.pointerEvents = 'auto';
+    iosInput.focus();
+    setTimeout(() => {
+      if (iosInput) iosInput.style.pointerEvents = 'none';
+    }, 100);
+  }
+}
+
+function onKbShow() {
+  if (iosKbVisible) return;
+  iosKbVisible = true;
+  document.body.classList.add('ios-kb-open');
+  setFkeyIcon('keyboard');
+}
+
+function onKbHide() {
+  if (!iosKbVisible) return;
+  iosKbVisible = false;
+  document.body.classList.remove('ios-kb-open');
+  document.getElementById('fkey-bar').style.bottom = '';
+  setFkeyIcon('dpad');
+  // Remove input from DOM so it can't trigger accessory bar
+  if (iosInput) {
+    setTimeout(() => {
+      try { document.body.removeChild(iosInput); } catch(e) {}
+      iosInput = null;
+    }, 300);
+  }
+}
+
+// Visual resize detection for iOS keyboard
+if (window.visualViewport) {
+  const fkeyBar = document.getElementById('fkey-bar');
+  function repositionFkeyBar() {
+    if (!iosKbVisible) return;
+    const vv = window.visualViewport;
+    fkeyBar.style.bottom = (window.innerHeight - vv.height - vv.offsetTop) + 'px';
+  }
+  let lastHeight = window.visualViewport.height;
+  window.visualViewport.addEventListener('resize', () => {
+    const newHeight = window.visualViewport.height;
+    if (newHeight < lastHeight - 100) onKbShow();
+    else if (newHeight > lastHeight + 100) { onKbHide(); fkeyBar.style.bottom = ''; }
+    repositionFkeyBar();
+    lastHeight = newHeight;
+  });
+  window.visualViewport.addEventListener('scroll', repositionFkeyBar);
+}
+
+// ── Key injection ─────────────────────────────────────────────
+
+function getTarget() {
+  return document.querySelector('#dos-root canvas')
+    || document.querySelector('#dos-root .emulator-canvas')
+    || document.getElementById('dos-root');
+}
+
+function fireKey(key, down) {
+  const el = getTarget();
+  if (!el) return;
+  const code = toCode(key), kc = toKC(key);
+  el.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', {
+    key, code, keyCode: kc, which: kc,
+    bubbles: true, cancelable: true,
+  }));
+}
+
+function toCode(k) {
+  const m = {
+    ArrowUp:'ArrowUp', ArrowDown:'ArrowDown', ArrowLeft:'ArrowLeft', ArrowRight:'ArrowRight',
+    Enter:'Enter', Escape:'Escape', Tab:'Tab', Backspace:'Backspace', ' ':'Space',
+    F1:'F1',F2:'F2',F3:'F3',F4:'F4',F5:'F5',F6:'F6',F7:'F7',F8:'F8',
+    F9:'F9',F10:'F10',F11:'F11',F12:'F12',
+  };
+  return m[k] || (k.length === 1 ? 'Key' + k.toUpperCase() : k);
+}
+function toKC(k) {
+  const m = {
+    Enter:13, Escape:27, Tab:9, Backspace:8, ' ':32,
+    ArrowLeft:37, ArrowUp:38, ArrowRight:39, ArrowDown:40,
+    F1:112,F2:113,F3:114,F4:115,F5:116,F6:117,F7:118,F8:119,
+    F9:120,F10:121,F11:122,F12:123,
+  };
+  if (m[k] !== undefined) return m[k];
+  return k.toUpperCase().charCodeAt(0) || 0;
+}
+
+// D-pad / button touch handlers
+function kd(el, evt, fixedKey) {
+  evt && evt.preventDefault();
+  el.classList.add('lit');
+  fireKey(fixedKey || el.dataset.key, true);
+}
+function ku(el, evt, fixedKey) {
+  evt && evt.preventDefault();
+  el.classList.remove('lit');
+  fireKey(fixedKey || el.dataset.key, false);
+}
+
+// Keyboard tiles
+document.querySelectorAll('#panel-keyboard .k').forEach(k => {
+  k.addEventListener('touchstart', e => { e.preventDefault(); kd(k); }, { passive: false });
+  k.addEventListener('touchend',   e => { e.preventDefault(); ku(k); }, { passive: false });
+  k.addEventListener('mousedown',  () => kd(k));
+  k.addEventListener('mouseup',    () => ku(k));
+});
+
+// Function key tiles
+document.querySelectorAll('#panel-fkeys .fk').forEach(k => {
+  k.addEventListener('touchstart', e => { e.preventDefault(); k.classList.add('lit'); }, { passive: false });
+  k.addEventListener('touchend',   e => { e.preventDefault(); k.classList.remove('lit'); }, { passive: false });
+});
+
+// Physical keyboard passthrough (Bluetooth keyboard, etc.)
+document.addEventListener('keydown', e => {
+  const c = getTarget();
+  if (c && document.activeElement !== c)
+    c.dispatchEvent(new KeyboardEvent('keydown', { key:e.key, code:e.code, keyCode:e.keyCode, bubbles:true, cancelable:true }));
+});
+document.addEventListener('keyup', e => {
+  const c = getTarget();
+  if (c && document.activeElement !== c)
+    c.dispatchEvent(new KeyboardEvent('keyup', { key:e.key, code:e.code, keyCode:e.keyCode, bubbles:true, cancelable:true }));
+});
+
+// Tap canvas to focus it
+document.getElementById('dos-root').addEventListener('click', () => {
+  const c = getTarget(); if (c) c.focus();
+});
+document.getElementById('dos-root').addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+document.getElementById('dos-root').addEventListener('contextmenu', e => e.preventDefault());
+
+// ── UI utils ─────────────────────────────────────────────────
+function showLoading(msg) {
+  document.getElementById('load-txt').textContent = msg || 'LOADING';
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoading() { document.getElementById('loading').classList.remove('show'); }
+
+function showErr(msg) {
+  const el = document.getElementById('err-msg');
+  el.textContent = msg; el.classList.add('show');
+}
+function hideErr() { document.getElementById('err-msg').classList.remove('show'); }
+
+let toastT;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 3200);
+}
+</script>
+</body>
+</html>
