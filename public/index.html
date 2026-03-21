@@ -134,7 +134,7 @@ html, body {
 /* dos-root fills full viewport minus the fixed controls at bottom */
 #dos-root {
   width: 100%;
-  height: calc(100vh - 48px - 240px); /* viewport - fkey-bar - dpad-drawer */
+  height: calc(100vh - 52px - 260px); /* viewport - fkey-bar - ctrl-drawer */
   background: #000;
   position: relative;
   overflow: hidden;
@@ -152,7 +152,8 @@ html, body {
   position: fixed;
   bottom: 0; left: 0; right: 0;
   z-index: 9999;
-  background: var(--surf);
+  background: #0f1117;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Hide controls when game not running */
@@ -162,18 +163,15 @@ html, body {
    STICKY F-KEY BAR
 ═══════════════════════════════════════════ */
 #fkey-bar {
-  flex-shrink: 0;
-  background: #0d0d18;
-  border-top: 1px solid var(--bord);
+  background: #0f1117;
+  border-top: 1px solid #1e2130;
   display: flex; align-items: center;
-  height: 48px;
-  overflow: hidden; /* outer container doesn't scroll */
-  position: relative;
+  height: 52px;
+  overflow: hidden;
 }
-/* The scrollable inner region */
 #fkey-bar-scroll {
   display: flex; align-items: center;
-  gap: 4px; padding: 6px 8px 6px 4px;
+  gap: 6px; padding: 8px 12px;
   overflow-x: scroll;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -182,139 +180,140 @@ html, body {
   height: 100%;
 }
 #fkey-bar-scroll::-webkit-scrollbar { display: none; }
-/* The sticky 🕹 button — never scrolls away */
+
+/* keyboard toggle button */
 .sfk-dpad {
   flex-shrink: 0;
-  font-size: 18px;
-  padding: 6px 10px;
-  margin-left: 6px;
-  border-radius: 6px;
-  background: rgba(0,229,255,0.08);
-  border: 1px solid rgba(0,229,255,0.3);
-  color: var(--acc);
+  font-size: 13px; font-weight: 600;
+  padding: 0 14px;
+  margin-left: 8px;
+  border-radius: 10px;
+  background: #1e2130;
+  border: 1px solid #2a2d3e;
+  color: #c8d6e5;
   cursor: pointer; touch-action: manipulation; user-select: none;
-  height: 36px; display: flex; align-items: center;
-}
-.sfk-dpad:active { background: rgba(0,229,255,0.2); }
-.sfk {
-  flex-shrink: 0;
-  font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
-  padding: 8px 11px; border-radius: 6px;
-  background: #181820; border: 1px solid rgba(255,179,71,0.2);
-  color: var(--amber); text-align: center;
-  cursor: pointer; touch-action: manipulation; user-select: none;
-  transition: background 0.05s;
+  height: 36px; display: flex; align-items: center; gap: 6px;
   white-space: nowrap;
 }
-.sfk:active, .sfk.lit { background: rgba(255,179,71,0.18); border-color: var(--amber); }
-.sfk.esc-k { color: var(--acc2); border-color: rgba(255,61,113,0.25); }
-.sfk.esc-k:active { background: rgba(255,61,113,0.15); border-color: var(--acc2); }
-.sfk.sep { width: 1px; background: var(--bord); padding: 0; border: none; cursor: default; align-self: stretch; margin: 4px 2px; }
+.sfk-dpad:active { background: #2a2d3e; }
+
+/* F-key buttons */
+.sfk {
+  flex-shrink: 0;
+  font-size: 14px; font-weight: 600;
+  padding: 0 14px; border-radius: 10px;
+  background: #1e2130;
+  border: 1px solid #2a2d3e;
+  color: #c8d6e5; text-align: center;
+  cursor: pointer; touch-action: manipulation; user-select: none;
+  height: 36px; display: flex; align-items: center; justify-content: center;
+  transition: background 0.05s;
+  white-space: nowrap; min-width: 44px;
+}
+.sfk:active, .sfk.lit { background: #2a2d3e; }
+.sfk.esc-k { color: #c8d6e5; }
+.sfk.sep { width: 1px; background: #1e2130; padding: 0; border: none; cursor: default; align-self: stretch; margin: 6px 2px; }
 
 /* ═══════════════════════════════════════════
-   CONTROL DRAWER — D-pad + iOS keyboard toggle
+   CONTROL DRAWER
 ═══════════════════════════════════════════ */
 #ctrl-drawer {
-  flex-shrink: 0;
-  background: var(--surf);
-  border-top: 1px solid var(--bord);
-  transition: height 0.22s ease;
+  background: #0f1117;
   overflow: hidden;
+  transition: height 0.2s ease;
 }
-#ctrl-drawer.h-collapsed { height: 36px; }
-#ctrl-drawer.h-dpad      { height: 240px; }
+#ctrl-drawer.h-collapsed { height: 44px; }
+#ctrl-drawer.h-dpad      { height: 260px; }
 
-/* When iOS keyboard opens: fkey-bar fixes to bottom of visual viewport */
+/* When iOS keyboard opens */
 body.ios-kb-open #fkey-bar {
   position: fixed;
-  bottom: 0;
-  left: 0; right: 0;
+  bottom: 0; left: 0; right: 0;
   z-index: 100;
-  border-top: 2px solid var(--acc);
-  /* Use visualViewport offset via JS — fallback is bottom:0 which is close enough */
+  border-top: 1px solid #1e2130;
 }
 
 /* ── Tab bar ── */
 #ctrl-tabs {
-  height: 36px;
+  height: 44px;
   display: flex; align-items: center;
-  padding: 0 6px; gap: 3px;
-  background: var(--surf);
-  border-bottom: 1px solid var(--bord);
+  padding: 0 12px; gap: 6px;
+  background: #0f1117;
+  border-top: 1px solid #1e2130;
   flex-shrink: 0; user-select: none;
-  overflow: hidden; /* never let tabs spill out */
 }
 .tab {
-  font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
-  padding: 4px 8px; border-radius: 4px; cursor: pointer;
-  border: 1px solid transparent; color: var(--dim);
+  font-size: 12px; font-weight: 600; letter-spacing: 0.3px;
+  padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid transparent; color: #5a6478;
   touch-action: manipulation; white-space: nowrap; flex-shrink: 0;
-  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  transition: background 0.1s, color 0.1s;
 }
-.tab.active { background: rgba(0,229,255,0.12); color: var(--acc); border-color: rgba(0,229,255,0.3); }
-.tab:active { background: rgba(0,229,255,0.2); color: var(--acc); }
-#tab-hide  { margin-left: auto; color: var(--dim); }
-#tab-eject { color: var(--acc2); border-color: rgba(255,61,113,0.2); }
-#tab-eject:active { background: rgba(255,61,113,0.15); border-color: var(--acc2); color: var(--acc2); }
-.tab-save { color: var(--acc3); border-color: rgba(168,255,62,0.2); }
-.tab-save:active { background: rgba(168,255,62,0.12); border-color: var(--acc3); color: var(--acc3); }
-.tab-load { color: var(--amber); border-color: rgba(255,179,71,0.2); }
-.tab-load:active { background: rgba(255,179,71,0.12); border-color: var(--amber); color: var(--amber); }
+.tab.active { background: #1e2130; color: #c8d6e5; border-color: #2a2d3e; }
+.tab:active { background: #2a2d3e; color: #c8d6e5; }
+#tab-hide  { margin-left: auto; color: #5a6478; }
+#tab-eject { color: #5a6478; }
+#tab-eject:active { background: #1e2130; color: #c8d6e5; }
+.tab-save { color: #5a6478; }
+.tab-save:active { background: #1e2130; color: #c8d6e5; }
+.tab-load { color: #5a6478; }
+.tab-load:active { background: #1e2130; color: #c8d6e5; }
 
 /* ── D-PAD PANEL ── */
-.panel { display: none; height: calc(100% - 36px); padding: 8px 12px; }
+.panel { display: none; height: calc(100% - 44px); padding: 10px 12px 10px; }
 .panel.show { display: flex; }
 
-/* D-pad on RIGHT, action buttons on LEFT */
 #panel-dpad {
-  align-items: center; gap: 12px;
+  align-items: center; gap: 10px;
   flex-direction: row;
 }
 
-/* Left side: compact action buttons — smaller, D-pad gets priority */
+/* Left: action buttons */
 #quick-btns {
-  display: flex; flex-direction: column; gap: 4px;
-  width: 72px; flex-shrink: 0; order: 1;
+  display: flex; flex-direction: column; gap: 6px;
+  width: 80px; flex-shrink: 0; order: 1;
 }
 .qb {
-  font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;
-  padding: 0 6px; border-radius: 6px; height: 44px;
-  border: 1px solid var(--bord); background: #181820; color: var(--dim);
+  font-size: 13px; font-weight: 600; letter-spacing: 0.3px;
+  padding: 0 6px; border-radius: 12px; height: 48px;
+  border: 1px solid #1e2130; background: #1a1d27; color: #c8d6e5;
   cursor: pointer; touch-action: manipulation; user-select: none;
-  text-align: center; transition: background 0.06s, color 0.06s;
+  text-align: center;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  transition: background 0.05s;
 }
-.qb:active { background: rgba(0,229,255,0.1); color: var(--acc); border-color: var(--acc); }
-.qb.grn { color: var(--acc3); border-color: rgba(168,255,62,0.25); }
-.qb.grn:active { background: rgba(168,255,62,0.12); border-color: var(--acc3); }
-.qb.red { color: var(--acc2); border-color: rgba(255,61,113,0.25); }
-.qb.red:active { background: rgba(255,61,113,0.12); border-color: var(--acc2); }
-.qb.amb { color: var(--amber); border-color: rgba(255,179,71,0.25); }
-.qb.amb:active { background: rgba(255,179,71,0.12); border-color: var(--amber); }
+.qb:active { background: #2a2d3e; }
+.qb.grn { color: #c8d6e5; }
+.qb.red { color: #c8d6e5; }
+.qb.amb { color: #c8d6e5; }
 
-/* D-pad on right — larger, takes remaining space */
+/* D-pad grid */
 #dpad {
   display: grid; grid-template: repeat(3,1fr) / repeat(3,1fr);
-  gap: 4px; flex: 1; order: 2;
-  /* Fill full panel height minus padding */
+  gap: 6px; flex: 1; order: 2;
   height: 100%;
-  max-width: calc(100% - 84px); /* account for quick-btns + gap */
+  max-width: calc(100% - 90px);
 }
 .dp {
-  border-radius: 8px; background: #181820;
-  border: 1px solid var(--bord); color: var(--dim);
-  font-size: 22px; display: flex; align-items: center; justify-content: center;
+  border-radius: 12px; background: #1a1d27;
+  border: 1px solid #1e2130; color: #c8d6e5;
+  font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center;
   cursor: pointer; touch-action: manipulation; user-select: none;
-  transition: background 0.05s, color 0.05s, transform 0.05s;
+  transition: background 0.05s, transform 0.05s;
   min-width: 0; min-height: 0;
 }
 .dp:active, .dp.lit {
-  background: rgba(0,229,255,0.12); border-color: var(--acc);
-  color: var(--acc); transform: scale(0.9);
-  box-shadow: 0 0 10px rgba(0,229,255,0.3);
+  background: #2a2d3e;
+  transform: scale(0.93);
 }
-.dp-mid { background: #0f0f16 !important; border-color: #0f0f16 !important; cursor: default; }
+.dp-mid { 
+  background: #0f1117 !important; 
+  border-color: #0f1117 !important; 
+  cursor: default;
+  color: #2a2d3e;
+  font-size: 18px;
+}
 
 /* ═══════════════════════════════════════════
    LOADING OVERLAY
@@ -420,7 +419,7 @@ body.ios-kb-open #fkey-bar {
 
   <!-- ── STICKY F-KEY BAR ── -->
   <div id="fkey-bar">
-    <div class="sfk-dpad" id="fkey-dpad-btn" onclick="toggleIOSKeyboard()">⌨</div>
+    <div class="sfk-dpad" id="fkey-dpad-btn" onclick="toggleIOSKeyboard()">⌨ Type</div>
     <div id="fkey-bar-scroll">
       <div class="sfk esc-k"  ontouchstart="kd(this,event,'Escape')" ontouchend="ku(this,event,'Escape')">ESC</div>
       <div class="sfk sep"></div>
@@ -463,13 +462,13 @@ body.ios-kb-open #fkey-bar {
       <!-- Right: D-pad -->
       <div id="dpad">
         <div></div>
-        <div class="dp" data-key="ArrowUp"    ontouchstart="kd(this,event)" ontouchend="ku(this,event)">▲</div>
+        <div class="dp" data-key="ArrowUp"    ontouchstart="kd(this,event)" ontouchend="ku(this,event)">↑ Up</div>
         <div></div>
-        <div class="dp" data-key="ArrowLeft"  ontouchstart="kd(this,event)" ontouchend="ku(this,event)">◀</div>
-        <div class="dp dp-mid"></div>
-        <div class="dp" data-key="ArrowRight" ontouchstart="kd(this,event)" ontouchend="ku(this,event)">▶</div>
+        <div class="dp" data-key="ArrowLeft"  ontouchstart="kd(this,event)" ontouchend="ku(this,event)">← Left</div>
+        <div class="dp dp-mid">🎮</div>
+        <div class="dp" data-key="ArrowRight" ontouchstart="kd(this,event)" ontouchend="ku(this,event)">→ Right</div>
         <div></div>
-        <div class="dp" data-key="ArrowDown"  ontouchstart="kd(this,event)" ontouchend="ku(this,event)">▼</div>
+        <div class="dp" data-key="ArrowDown"  ontouchstart="kd(this,event)" ontouchend="ku(this,event)">↓ Down</div>
         <div></div>
       </div>
 
@@ -590,10 +589,10 @@ async function startDos(bytes, ext, filename) {
   document.getElementById('controls-fixed').classList.remove('hidden');
   // Force visibility with inline style as belt-and-suspenders
   const cf = document.getElementById('controls-fixed');
-  cf.style.cssText = 'display:block !important; position:fixed !important; bottom:0 !important; left:0 !important; right:0 !important; z-index:9999 !important; background:#1a1a2e !important;';
+  cf.style.cssText = 'display:block !important; position:fixed !important; bottom:0 !important; left:0 !important; right:0 !important; z-index:9999 !important; background:#0f1117 !important;';
   // Set game height to viewport minus controls
   setTimeout(() => {
-    const ctrlH = cf.offsetHeight || 288;
+    const ctrlH = cf.offsetHeight || 312;
     const gameH = window.innerHeight - ctrlH;
     document.getElementById('dos-root').style.height = Math.max(gameH, 100) + 'px';
   }, 50);
