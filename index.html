@@ -310,7 +310,7 @@ body {
   <div id="tabs">
     <div class="tab on" id="tab-d" onclick="toggleDpad()">D-PAD</div>
     <div class="tab" onclick="saveState()">💾 Save</div>
-    <div class="tab" onclick="loadState()">📂 Load</div>
+    <div class="tab" onclick="loadState()">↩ Resume</div>
     <div class="tab" onclick="ejectGame()">⏏ Eject</div>
     <div class="tab" id="tab-v" onclick="toggleDpad()">▾</div>
   </div>
@@ -428,35 +428,60 @@ async function ejectGame() {
   toast('Ejected.');
 }
 
-async function saveState() {
-  if (!dosInstance) { toast('No game running.'); return; }
-  try {
-    const ci = dosInstance._ci || dosInstance.ci;
-    let data = ci && typeof ci.persist==='function' ? await ci.persist(false) : null;
-    if (!data && typeof dosInstance.save==='function') { await dosInstance.save(); return; }
-    if (!data) { toast('Nothing to save.'); return; }
-    const a = Object.assign(document.createElement('a'), {
-      href: URL.createObjectURL(new Blob([data],{type:'application/zip'})),
-      download: 'dosplay-save.jsdos'
-    });
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    toast('💾 Saved!');
-  } catch(e) { toast('Save failed.'); }
+// ── IndexedDB save/load — no file downloads needed ──────────
+const DB_NAME = 'dosplay', DB_STORE = 'saves', DB_KEY = 'quicksave';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-function loadState() {
-  const inp = document.createElement('input');
-  inp.type='file'; inp.accept='.jsdos';
-  inp.style.cssText='position:fixed;top:-9999px;';
-  inp.onchange = async e => {
-    const f = e.target.files[0];
-    document.body.removeChild(inp);
-    if (!f) return;
+async function saveState() {
+  if (!dosInstance) { toast('No game running.'); return; }
+  const saveTab = document.querySelector('.tab[onclick="saveState()"]');
+  const orig = saveTab ? saveTab.textContent : '';
+  try {
+    if (saveTab) saveTab.textContent = '⏳';
+    const ci = dosInstance._ci || dosInstance.ci;
+    const data = ci && typeof ci.persist==='function' ? await ci.persist(false) : null;
+    if (!data) { toast('Nothing to save yet.'); return; }
+    const db = await openDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).put(data, DB_KEY);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    toast('💾 Saved!');
+  } catch(e) {
+    console.error('Save error:', e);
+    toast('Save failed: ' + (e.message || e));
+  } finally {
+    if (saveTab) saveTab.textContent = orig;
+  }
+}
+
+async function loadState() {
+  try {
+    const db = await openDB();
+    const data = await new Promise((resolve, reject) => {
+      const tx = db.transaction(DB_STORE, 'readonly');
+      const req = tx.objectStore(DB_STORE).get(DB_KEY);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    if (!data) { toast('No save found.'); return; }
     showLoad('LOADING SAVE');
-    try { await startDos(new Uint8Array(await f.arrayBuffer()), 'zip', f.name); toast('📂 Loaded!'); }
-    catch(e) { hideLoad(); showErr('Load failed: '+(e.message||e)); }
-  };
-  document.body.appendChild(inp); inp.click();
+    await startDos(new Uint8Array(data), 'zip', 'quicksave.jsdos');
+    toast('📂 Save loaded!');
+  } catch(e) {
+    hideLoad();
+    toast('Load failed: ' + (e.message || e));
+  }
 }
 
 // ── Keys ─────────────────────────────────────────────────────
