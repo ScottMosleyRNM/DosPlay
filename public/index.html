@@ -342,6 +342,18 @@ body {
 <div id="toast"></div>
 
 <script>
+// ── Prevent double-tap zoom globally on iOS ─────────────────
+(function() {
+  let lastTap = 0;
+  document.addEventListener('touchend', function(e) {
+    const now = Date.now();
+    if (now - lastTap < 350) {
+      e.preventDefault();
+    }
+    lastTap = now;
+  }, { passive: false });
+})();
+
 // ── SW (no auto-reload) ──────────────────────────────────────
 if ('serviceWorker' in navigator)
   navigator.serviceWorker.register('/DosPlay/sw.js').catch(()=>{});
