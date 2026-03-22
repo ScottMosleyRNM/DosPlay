@@ -309,8 +309,8 @@ body {
 
   <div id="tabs">
     <div class="tab on" id="tab-d" onclick="toggleDpad()">D-PAD</div>
-    <div class="tab" onclick="saveState()">💾 Save</div>
-    <div class="tab" onclick="loadState()">↩ Resume</div>
+    <div class="tab" onclick="saveState()">💾 Save Files</div>
+    <div class="tab" onclick="loadState()">📂 Restore</div>
     <div class="tab" onclick="ejectGame()">⏏ Eject</div>
     <div class="tab" id="tab-v" onclick="toggleDpad()">▾</div>
   </div>
@@ -615,7 +615,7 @@ async function loadSave(key) {
       ? record.data
       : new Uint8Array(record.data);
     await startDos(bytes, 'jsdos', (record.meta.name || 'save') + '.jsdos');
-    toast('Loaded: ' + record.meta.name);
+    toast('Game files loaded — use in-game Restore to resume');
   } catch(e) {
     hideLoad();
     toast('Load failed: ' + (e.message || e));
@@ -826,7 +826,8 @@ function buildBundleFromFloppy(d){return buildZip([{name:'floppy.img',data:d},{n
 <!-- Save Modal -->
 <div id="save-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:flex-start;justify-content:center;padding:60px 20px 20px;">
   <div style="background:#161b27;border:1px solid #1e2433;border-radius:16px;width:100%;max-width:360px;padding:20px;">
-    <div style="color:#e2e8f0;font-size:16px;font-weight:700;margin-bottom:16px;">💾 Save Game</div>
+    <div style="color:#e2e8f0;font-size:16px;font-weight:700;margin-bottom:10px;">💾 Save Game Files</div>
+      <div style="color:#4a5568;font-size:12px;margin-bottom:14px;">Saves your in-game files. When you restore, the game will restart — use the game's own Load/Restore menu to continue.</div>
     <input id="save-name-input" type="text"
       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
       style="width:100%;padding:10px 12px;background:#0f1117;border:1px solid #2a3050;border-radius:10px;color:#e2e8f0;font-size:16px;outline:none;box-sizing:border-box;"
