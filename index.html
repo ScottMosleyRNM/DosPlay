@@ -292,7 +292,7 @@ body {
 
   <div id="frow">
     <div id="fscroll">
-      <div class="fk" id="type-btn" onclick="toggleKB()">⌨ Type</div>
+      <div class="fk" id="type-btn" ontouchend="event.preventDefault();toggleKB();" onclick="toggleKB()" style="touch-action:manipulation;">⌨ Type</div>
       <div class="fk" onpointerdown="kd(this,'Escape',event)" onpointerup="ku(this,'Escape',event)">ESC</div>
       <div class="fk" onpointerdown="kd(this,'F1',event)"  onpointerup="ku(this,'F1',event)">F1</div>
       <div class="fk" onpointerdown="kd(this,'F2',event)"  onpointerup="ku(this,'F2',event)">F2</div>
@@ -583,6 +583,32 @@ async function showLoadModal() {
 
 function closeLoadModal() {
   document.getElementById('load-modal').style.display = 'none';
+}
+
+async function loadSave(key) {
+  closeLoadModal();
+  try {
+    const record = await dbGet(key);
+    if (!record) { toast('Save not found.'); return; }
+    showLoad('LOADING SAVE');
+    // record.data is stored as Uint8Array, retrieve as ArrayBuffer from IDB
+    const bytes = record.data instanceof Uint8Array
+      ? record.data
+      : new Uint8Array(record.data);
+    await startDos(bytes, 'zip', (record.meta.name || 'save') + '.jsdos');
+    toast('Loaded: ' + record.meta.name);
+  } catch(e) {
+    hideLoad();
+    toast('Load failed: ' + (e.message || e));
+    console.error('loadSave error:', e);
+  }
+}
+
+async function deleteSave(key, row) {
+  if (!confirm('Delete this save?')) return;
+  await dbDelete(key);
+  if (row && row.parentNode) row.parentNode.removeChild(row);
+  toast('Deleted.');
 }
 
 // ── Keys ─────────────────────────────────────────────────────
