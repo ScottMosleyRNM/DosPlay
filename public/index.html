@@ -396,7 +396,7 @@ let currentGameName = '';
 
 async function loadGame(file) {
   const ext = file.name.split('.').pop().toLowerCase();
-  if (!['zip','img','ima','exe','com','bat'].includes(ext)) {
+  if (!['zip','img','ima','exe','com','bat','jsdos'].includes(ext)) {
     showErr('Unsupported: .' + ext); return;
   }
   hideErr();
@@ -419,9 +419,16 @@ async function startDos(bytes, ext, name) {
 
   showLoad('BUILDING BUNDLE');
   let bundle;
-  if (ext === 'zip')                    bundle = await ensureJsdosBundle(bytes);
-  else if (/exe|com|bat/.test(ext))     bundle = buildBundleFromExe(bytes, name);
-  else                                  bundle = buildBundleFromFloppy(bytes);
+  if (ext === 'jsdos') {
+    // Already a valid jsdos bundle — pass through untouched
+    bundle = bytes;
+  } else if (ext === 'zip') {
+    bundle = await ensureJsdosBundle(bytes);
+  } else if (/exe|com|bat/.test(ext)) {
+    bundle = buildBundleFromExe(bytes, name);
+  } else {
+    bundle = buildBundleFromFloppy(bytes);
+  }
 
   showLoad('STARTING DOSBOX');
   const blob = new Blob([bundle], { type: 'application/zip' });
@@ -607,7 +614,7 @@ async function loadSave(key) {
     const bytes = record.data instanceof Uint8Array
       ? record.data
       : new Uint8Array(record.data);
-    await startDos(bytes, 'zip', (record.meta.name || 'save') + '.jsdos');
+    await startDos(bytes, 'jsdos', (record.meta.name || 'save') + '.jsdos');
     toast('Loaded: ' + record.meta.name);
   } catch(e) {
     hideLoad();
