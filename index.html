@@ -33,13 +33,26 @@ body {
 #dos-root {
   width: 100%;
   height: 100%;
-  position: relative;   /* CRITICAL: contains js-dos absolute children */
+  position: relative;
   overflow: hidden;
 }
-#dos-root > div, #dos-root canvas {
+
+/* js-dos fills its container, canvas letterboxed at game's native ratio */
+#dos-root > div {
   width: 100% !important;
   height: 100% !important;
 }
+#dos-root canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* Hide js-dos sidebar/chrome — we have our own controls */
+.jsdos-rso .sidebar,
+.jsdos-rso .sidebar-thin,
+.jsdos-rso .emulator-options { display: none !important; }
 
 /* Launch screen sits inside game-wrap */
 #launch {
@@ -390,7 +403,7 @@ async function startDos(bytes, ext, name) {
   dosInstance = window.Dos(document.getElementById('dos-root'), {
     pathPrefix: '/DosPlay/emulators/',
     noCloud: true, noNetworking: true, workerThread: true,
-    autoStart: true, kiosk: true, thinSidebar: true, renderAspect: 'AsIs',
+    autoStart: true, kiosk: true, thinSidebar: true, renderAspect: '4/3',
     url: URL.createObjectURL(blob),
   });
   hideLoad();
