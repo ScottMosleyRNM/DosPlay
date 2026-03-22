@@ -379,6 +379,8 @@ function toggleDpad() {
 
 // ── Game load ────────────────────────────────────────────────
 let dosInstance = null;
+let ciInstance = null; // js-dos CommandInterface, set after ci-ready
+let currentGameName = '';
 
 async function loadGame(file) {
   const ext = file.name.split('.').pop().toLowerCase();
@@ -411,12 +413,17 @@ async function startDos(bytes, ext, name) {
 
   showLoad('STARTING DOSBOX');
   const blob = new Blob([bundle], { type: 'application/zip' });
+  ciInstance = null; // reset CI until emulator is ready
   dosInstance = window.Dos(document.getElementById('dos-root'), {
     pathPrefix: '/DosPlay/emulators/',
     noCloud: true, noNetworking: true, workerThread: true,
     autoStart: true, kiosk: true, thinSidebar: true, renderAspect: '4/3',
     url: URL.createObjectURL(blob),
+    onEvent: (event, ci) => {
+      if (event === 'ci-ready') { ciInstance = ci; }
+    },
   });
+  currentGameName = name;
   hideLoad();
   toast('▶ ' + name);
 }
@@ -428,8 +435,8 @@ async function ejectGame() {
   toast('Ejected.');
 }
 
-// ── IndexedDB save/load — no file downloads needed ──────────
-const DB_NAME = 'dosplay', DB_STORE = 'saves', DB_KEY = 'quicksave';
+// ── Named saves via IndexedDB ────────────────────────────────
+const DB_NAME = 'dosplay', DB_STORE = 'saves';
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -439,49 +446,134 @@ function openDB() {
     req.onerror = () => reject(req.error);
   });
 }
+async function dbPut(key, val) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).put(val, key);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+async function dbGet(key) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(DB_STORE, 'readonly');
+    const req = tx.objectStore(DB_STORE).get(key);
+    req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error);
+  });
+}
+async function dbGetAll() {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(DB_STORE, 'readonly');
+    const store = tx.objectStore(DB_STORE);
+    const keys = [], vals = [];
+    store.openCursor().onsuccess = e => {
+      const cur = e.target.result;
+      if (cur) { keys.push(cur.key); vals.push(cur.value); cur.continue(); }
+      else res(keys.map((k,i) => ({key:k, value:vals[i]})));
+    };
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function dbDelete(key) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).delete(key);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
 
-async function saveState() {
-  if (!dosInstance) { toast('No game running.'); return; }
-  const saveTab = document.querySelector('.tab[onclick="saveState()"]');
-  const orig = saveTab ? saveTab.textContent : '';
+// ── Save modal ───────────────────────────────────────────────
+function saveState() {
+  if (!ciInstance) { toast('Game not ready yet — wait a moment.'); return; }
+  showSaveModal();
+}
+function loadState() {
+  showLoadModal();
+}
+
+function showSaveModal() {
+  const now = new Date();
+  const defaultName = currentGameName
+    ? currentGameName.replace(/\.[^.]+$/, '') + ' – ' + now.toLocaleDateString()
+    : 'Save ' + now.toLocaleString();
+  const modal = document.getElementById('save-modal');
+  document.getElementById('save-name-input').value = defaultName;
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('save-name-input').select(), 50);
+}
+
+async function confirmSave() {
+  const name = document.getElementById('save-name-input').value.trim();
+  if (!name) { toast('Enter a name.'); return; }
+  closeSaveModal();
   try {
-    if (saveTab) saveTab.textContent = '⏳';
-    const ci = dosInstance._ci || dosInstance.ci;
-    const data = ci && typeof ci.persist==='function' ? await ci.persist(false) : null;
+    const data = await ciInstance.persist(false);
     if (!data) { toast('Nothing to save yet.'); return; }
-    const db = await openDB();
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(DB_STORE, 'readwrite');
-      tx.objectStore(DB_STORE).put(data, DB_KEY);
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
+    const meta = { name, date: new Date().toLocaleString(), game: currentGameName };
+    await dbPut('save_' + Date.now(), { data, meta });
+    toast('💾 Saved: ' + name);
+  } catch(e) { toast('Save failed: ' + (e.message||e)); }
+}
+function closeSaveModal() {
+  document.getElementById('save-modal').style.display = 'none';
+}
+
+async function showLoadModal() {
+  const modal = document.getElementById('load-modal');
+  const list = document.getElementById('load-save-list');
+  list.innerHTML = '<div style="color:#4a5568;padding:20px;text-align:center">Loading...</div>';
+  modal.style.display = 'flex';
+  try {
+    const saves = await dbGetAll();
+    if (saves.length === 0) {
+      list.innerHTML = '<div style="color:#4a5568;padding:20px;text-align:center">No saves yet.</div>';
+      return;
+    }
+    // Sort newest first
+    saves.sort((a,b) => b.key.localeCompare(a.key));
+    list.innerHTML = '';
+    saves.forEach(({key, value}) => {
+      const {meta} = value;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid #1e2433;';
+      row.innerHTML = \`
+        <div style="flex:1;min-width:0;">
+          <div style="color:#e2e8f0;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${meta.name}</div>
+          <div style="color:#4a5568;font-size:12px;margin-top:2px">\${meta.game||''} · \${meta.date}</div>
+        </div>
+        <button onclick="loadSave('\${key}')" style="padding:6px 14px;background:#1a2035;border:1px solid #2a3050;border-radius:8px;color:#e2e8f0;font-size:13px;cursor:pointer;white-space:nowrap;touch-action:manipulation">Load</button>
+        <button onclick="deleteSave('\${key}',this)" style="padding:6px 10px;background:transparent;border:1px solid #2a3050;border-radius:8px;color:#4a5568;font-size:13px;cursor:pointer;touch-action:manipulation">✕</button>
+      \`;
+      list.appendChild(row);
     });
-    toast('💾 Saved!');
   } catch(e) {
-    console.error('Save error:', e);
-    toast('Save failed: ' + (e.message || e));
-  } finally {
-    if (saveTab) saveTab.textContent = orig;
+    list.innerHTML = '<div style="color:#fc8181;padding:20px">Error loading saves.</div>';
   }
 }
 
-async function loadState() {
+async function loadSave(key) {
+  closeLoadModal();
   try {
-    const db = await openDB();
-    const data = await new Promise((resolve, reject) => {
-      const tx = db.transaction(DB_STORE, 'readonly');
-      const req = tx.objectStore(DB_STORE).get(DB_KEY);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-    if (!data) { toast('No save found.'); return; }
+    const record = await dbGet(key);
+    if (!record) { toast('Save not found.'); return; }
     showLoad('LOADING SAVE');
-    await startDos(new Uint8Array(data), 'zip', 'quicksave.jsdos');
-    toast('📂 Save loaded!');
-  } catch(e) {
-    hideLoad();
-    toast('Load failed: ' + (e.message || e));
-  }
+    await startDos(new Uint8Array(record.data), 'zip', record.meta.name + '.jsdos');
+    toast('📂 Loaded: ' + record.meta.name);
+  } catch(e) { hideLoad(); toast('Load failed: ' + (e.message||e)); }
+}
+
+async function deleteSave(key, btn) {
+  if (!confirm('Delete this save?')) return;
+  await dbDelete(key);
+  btn.closest('div[style]').remove();
+  toast('Deleted.');
+}
+
+function closeLoadModal() {
+  document.getElementById('load-modal').style.display = 'none';
 }
 
 // ── Keys ─────────────────────────────────────────────────────
@@ -679,5 +771,31 @@ async function ensureJsdosBundle(zip) {
 function buildBundleFromExe(d,n){return buildZip([{name:n,data:d},{name:'.jsdos/dosbox.conf',data:enc(dosConf(`[autoexec]\nmount c .\nc:\n${n.toUpperCase()}\n`))}]);}
 function buildBundleFromFloppy(d){return buildZip([{name:'floppy.img',data:d},{name:'.jsdos/dosbox.conf',data:enc(dosConf('[autoexec]\nimgmount a floppy.img -t floppy\na:\n'))}]);}
 </script>
+
+<!-- Save Modal -->
+<div id="save-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#161b27;border:1px solid #1e2433;border-radius:16px;width:100%;max-width:360px;padding:20px;">
+    <div style="color:#e2e8f0;font-size:16px;font-weight:700;margin-bottom:16px;">💾 Save Game</div>
+    <input id="save-name-input" type="text"
+      style="width:100%;padding:10px 12px;background:#0f1117;border:1px solid #2a3050;border-radius:10px;color:#e2e8f0;font-size:15px;outline:none;box-sizing:border-box;"
+      placeholder="Save name..."
+      onkeydown="if(event.key==='Enter')confirmSave()">
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button onclick="closeSaveModal()" style="flex:1;padding:11px;background:#0f1117;border:1px solid #1e2433;border-radius:10px;color:#4a5568;font-size:14px;cursor:pointer;touch-action:manipulation;">Cancel</button>
+      <button onclick="confirmSave()" style="flex:1;padding:11px;background:#1a2035;border:1px solid #2a3050;border-radius:10px;color:#e2e8f0;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Load Modal -->
+<div id="load-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#161b27;border:1px solid #1e2433;border-radius:16px;width:100%;max-width:360px;max-height:70vh;display:flex;flex-direction:column;">
+    <div style="padding:16px 20px;border-bottom:1px solid #1e2433;display:flex;align-items:center;justify-content:space-between;">
+      <span style="color:#e2e8f0;font-size:16px;font-weight:700;">📂 Load Save</span>
+      <button onclick="closeLoadModal()" style="background:none;border:none;color:#4a5568;font-size:20px;cursor:pointer;padding:0;touch-action:manipulation;">✕</button>
+    </div>
+    <div id="load-save-list" style="overflow-y:auto;flex:1;"></div>
+  </div>
+</div>
 </body>
 </html>
