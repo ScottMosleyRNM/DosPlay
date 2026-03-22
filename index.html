@@ -661,30 +661,38 @@ function ku(el, key, evt) {
 
 // ── iOS keyboard ─────────────────────────────────────────────
 let iosInp = null;
-
-// Float entire controls above keyboard when it opens
-if (window.visualViewport) {
+// Only reposition controls when the GAME keyboard (iosInp) is open
+// — not for save modal or any other input focus
+function repositionForKB() {
+  if (!window.visualViewport) return;
   const ctrl = document.getElementById('controls');
-  const reposition = () => {
-    const kbHeight = window.innerHeight - window.visualViewport.height;
-    if (kbHeight > 80) {
-      // Keyboard is open — fix controls above it
-      ctrl.style.position = 'fixed';
-      ctrl.style.bottom = kbHeight + 'px';
-      ctrl.style.left = '0';
-      ctrl.style.right = '0';
-      ctrl.style.zIndex = '300';
-    } else {
-      // Keyboard closed — restore to normal flex flow
-      ctrl.style.position = '';
-      ctrl.style.bottom = '';
-      ctrl.style.left = '';
-      ctrl.style.right = '';
-      ctrl.style.zIndex = '';
-    }
-  };
-  window.visualViewport.addEventListener('resize', reposition);
-  window.visualViewport.addEventListener('scroll', reposition);
+  const gameWrap = document.getElementById('game-wrap');
+  const kbHeight = window.innerHeight - window.visualViewport.height;
+  if (iosInp && kbHeight > 80) {
+    // Game keyboard open: pin controls just above keyboard
+    ctrl.style.position = 'fixed';
+    ctrl.style.bottom = kbHeight + 'px';
+    ctrl.style.left = '0';
+    ctrl.style.right = '0';
+    ctrl.style.zIndex = '300';
+    // Shrink game area to fill only the space above controls
+    const ctrlH = ctrl.offsetHeight;
+    gameWrap.style.height = (window.innerHeight - kbHeight - ctrlH) + 'px';
+    gameWrap.style.flex = 'none';
+  } else {
+    // Keyboard closed or not game keyboard — restore normal layout
+    ctrl.style.position = '';
+    ctrl.style.bottom = '';
+    ctrl.style.left = '';
+    ctrl.style.right = '';
+    ctrl.style.zIndex = '';
+    gameWrap.style.height = '';
+    gameWrap.style.flex = '';
+  }
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', repositionForKB);
+  window.visualViewport.addEventListener('scroll', repositionForKB);
 }
 
 function toggleKB() {
@@ -717,13 +725,7 @@ function toggleKB() {
     setTimeout(() => {
       try { document.body.removeChild(iosInp); } catch(e) {}
       iosInp = null;
-      // Restore controls to normal flow
-      const ctrl = document.getElementById('controls');
-      ctrl.style.position = '';
-      ctrl.style.bottom = '';
-      ctrl.style.left = '';
-      ctrl.style.right = '';
-      ctrl.style.zIndex = '';
+      repositionForKB(); // restore layout now that iosInp is null
     }, 200);
   };
   document.body.appendChild(iosInp);
@@ -820,11 +822,12 @@ function buildBundleFromFloppy(d){return buildZip([{name:'floppy.img',data:d},{n
 </script>
 
 <!-- Save Modal -->
-<div id="save-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+<div id="save-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:flex-start;justify-content:center;padding:60px 20px 20px;">
   <div style="background:#161b27;border:1px solid #1e2433;border-radius:16px;width:100%;max-width:360px;padding:20px;">
     <div style="color:#e2e8f0;font-size:16px;font-weight:700;margin-bottom:16px;">💾 Save Game</div>
     <input id="save-name-input" type="text"
-      style="width:100%;padding:10px 12px;background:#0f1117;border:1px solid #2a3050;border-radius:10px;color:#e2e8f0;font-size:15px;outline:none;box-sizing:border-box;"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      style="width:100%;padding:10px 12px;background:#0f1117;border:1px solid #2a3050;border-radius:10px;color:#e2e8f0;font-size:16px;outline:none;box-sizing:border-box;"
       placeholder="Save name..."
       onkeydown="if(event.key==='Enter')confirmSave()">
     <div style="display:flex;gap:10px;margin-top:16px;">
