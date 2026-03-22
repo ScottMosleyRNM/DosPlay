@@ -661,33 +661,28 @@ function ku(el, key, evt) {
 
 // ── iOS keyboard ─────────────────────────────────────────────
 let iosInp = null;
-// Only reposition controls when the GAME keyboard (iosInp) is open
-// — not for save modal or any other input focus
+// When the game keyboard opens, float ONLY the F-key row above it.
+// Leave everything else (game, d-pad) untouched.
 function repositionForKB() {
-  if (!window.visualViewport) return;
-  const ctrl = document.getElementById('controls');
-  const gameWrap = document.getElementById('game-wrap');
+  const frow = document.getElementById('frow');
+  if (!frow || !window.visualViewport) return;
   const kbHeight = window.innerHeight - window.visualViewport.height;
   if (iosInp && kbHeight > 80) {
-    // Game keyboard open: pin controls just above keyboard
-    ctrl.style.position = 'fixed';
-    ctrl.style.bottom = kbHeight + 'px';
-    ctrl.style.left = '0';
-    ctrl.style.right = '0';
-    ctrl.style.zIndex = '300';
-    // Shrink game area to fill only the space above controls
-    const ctrlH = ctrl.offsetHeight;
-    gameWrap.style.height = (window.innerHeight - kbHeight - ctrlH) + 'px';
-    gameWrap.style.flex = 'none';
+    frow.style.position = 'fixed';
+    frow.style.bottom = kbHeight + 'px';
+    frow.style.left = '0';
+    frow.style.right = '0';
+    frow.style.zIndex = '500';
+    frow.style.borderTop = '1px solid #1e2433';
+    frow.style.background = '#0f1117';
   } else {
-    // Keyboard closed or not game keyboard — restore normal layout
-    ctrl.style.position = '';
-    ctrl.style.bottom = '';
-    ctrl.style.left = '';
-    ctrl.style.right = '';
-    ctrl.style.zIndex = '';
-    gameWrap.style.height = '';
-    gameWrap.style.flex = '';
+    frow.style.position = '';
+    frow.style.bottom = '';
+    frow.style.left = '';
+    frow.style.right = '';
+    frow.style.zIndex = '';
+    frow.style.borderTop = '';
+    frow.style.background = '';
   }
 }
 if (window.visualViewport) {
@@ -725,7 +720,7 @@ function toggleKB() {
     setTimeout(() => {
       try { document.body.removeChild(iosInp); } catch(e) {}
       iosInp = null;
-      repositionForKB(); // restore layout now that iosInp is null
+      repositionForKB();
     }, 200);
   };
   document.body.appendChild(iosInp);
