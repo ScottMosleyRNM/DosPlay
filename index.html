@@ -95,6 +95,13 @@ body {
   border-top: 1px solid #1e2433;
 }
 
+/* Prevent double-tap zoom on entire controls area */
+#controls, #controls * {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* F-key row */
 #frow {
   height: 52px;
