@@ -497,16 +497,73 @@ function ku(el, key, evt) {
 
 // ── iOS keyboard ─────────────────────────────────────────────
 let iosInp = null;
+
+// Keep F-key row pinned above keyboard using visualViewport
+const fkeyRow = document.getElementById('fkey-row');
+if (window.visualViewport) {
+  const pinFkeyRow = () => {
+    if (!iosInp) return;
+    const vv = window.visualViewport;
+    const offset = window.innerHeight - vv.height - vv.offsetTop;
+    fkeyRow.style.position = 'fixed';
+    fkeyRow.style.bottom = offset + 'px';
+    fkeyRow.style.left = '0';
+    fkeyRow.style.right = '0';
+    fkeyRow.style.zIndex = '1000';
+  };
+  const unpinFkeyRow = () => {
+    fkeyRow.style.position = '';
+    fkeyRow.style.bottom = '';
+    fkeyRow.style.left = '';
+    fkeyRow.style.right = '';
+    fkeyRow.style.zIndex = '';
+  };
+  window.visualViewport.addEventListener('resize', () => {
+    if (iosInp) pinFkeyRow(); else unpinFkeyRow();
+  });
+  window.visualViewport.addEventListener('scroll', () => {
+    if (iosInp) pinFkeyRow();
+  });
+}
+
 function toggleKB() {
   if (iosInp) { iosInp.blur(); return; }
-  iosInp = document.createElement('textarea');
-  iosInp.style.cssText = 'position:fixed;top:-300px;left:0;width:1px;height:1px;opacity:0;font-size:16px;';
+  // Use input type=text with attributes that suppress iOS accessory bar
+  iosInp = document.createElement('input');
+  iosInp.type = 'text';
+  iosInp.setAttribute('autocomplete', 'off');
+  iosInp.setAttribute('autocorrect', 'off');
+  iosInp.setAttribute('autocapitalize', 'none');
+  iosInp.setAttribute('spellcheck', 'false');
+  iosInp.setAttribute('inputmode', 'text');
+  iosInp.style.cssText = 'position:fixed;top:-999px;left:0;width:1px;height:1px;opacity:0;font-size:16px;border:none;outline:none;';
   iosInp.oninput = e => {
     [...e.target.value].forEach(c => { fireKey(c,true); fireKey(c,false); });
     iosInp.value = '';
   };
+  iosInp.onkeydown = e => {
+    if (e.key === 'Backspace' || e.key === 'Enter' || e.key === 'Escape') {
+      fireKey(e.key, true);
+      e.preventDefault();
+    }
+  };
+  iosInp.onkeyup = e => {
+    if (e.key === 'Backspace' || e.key === 'Enter' || e.key === 'Escape') {
+      fireKey(e.key, false);
+    }
+  };
   iosInp.onblur = () => {
-    setTimeout(() => { try{document.body.removeChild(iosInp);}catch(e){} iosInp=null; }, 200);
+    setTimeout(() => {
+      try { document.body.removeChild(iosInp); } catch(e) {}
+      iosInp = null;
+      if (window.visualViewport) {
+        fkeyRow.style.position = '';
+        fkeyRow.style.bottom = '';
+        fkeyRow.style.left = '';
+        fkeyRow.style.right = '';
+        fkeyRow.style.zIndex = '';
+      }
+    }, 200);
   };
   document.body.appendChild(iosInp);
   iosInp.focus();
