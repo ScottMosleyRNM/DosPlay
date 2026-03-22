@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="/DosPlay/js-dos.css">
 <script src="/DosPlay/js-dos.js"></script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
 body {
   background: #0f1117;
@@ -292,7 +292,7 @@ body {
 
   <div id="frow">
     <div id="fscroll">
-      <div class="fk" id="type-btn" ontouchend="event.preventDefault();toggleKB();" onclick="toggleKB()" style="touch-action:manipulation;">⌨ Type</div>
+      <div class="fk" id="type-btn" onclick="toggleKB()">⌨ Type</div>
       <div class="fk" onpointerdown="kd(this,'Escape',event)" onpointerup="ku(this,'Escape',event)">ESC</div>
       <div class="fk" onpointerdown="kd(this,'F1',event)"  onpointerup="ku(this,'F1',event)">F1</div>
       <div class="fk" onpointerdown="kd(this,'F2',event)"  onpointerup="ku(this,'F2',event)">F2</div>
