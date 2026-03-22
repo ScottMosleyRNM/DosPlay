@@ -37,15 +37,19 @@ body {
   overflow: hidden;
 }
 
-/* js-dos fills its container, canvas letterboxed at game's native ratio */
+/* js-dos fills its container, canvas pinned to top */
 #dos-root > div {
   width: 100% !important;
   height: 100% !important;
+  display: flex !important;
+  align-items: flex-start !important;
 }
 #dos-root canvas {
   width: 100% !important;
-  height: 100% !important;
+  height: auto !important;
+  max-height: 100%;
   object-fit: contain;
+  object-position: top center;
   image-rendering: pixelated;
 }
 
