@@ -413,19 +413,33 @@ async function startDos(bytes, ext, name) {
 
   showLoad('STARTING DOSBOX');
   const blob = new Blob([bundle], { type: 'application/zip' });
-  ciInstance = null; // reset CI until emulator is ready
+  ciInstance = null;
+  currentGameName = name;
   dosInstance = window.Dos(document.getElementById('dos-root'), {
     pathPrefix: '/DosPlay/emulators/',
     noCloud: true, noNetworking: true, workerThread: true,
     autoStart: true, kiosk: true, thinSidebar: true, renderAspect: '4/3',
     url: URL.createObjectURL(blob),
     onEvent: (event, ci) => {
-      if (event === 'ci-ready') { ciInstance = ci; }
+      if (event === 'ci-ready') {
+        ciInstance = ci;
+        console.log('[DOS/PLAY] CI ready');
+      }
     },
   });
-  currentGameName = name;
   hideLoad();
   toast('▶ ' + name);
+  // Fallback: poll for ci on dosInstance in case onEvent doesn't fire
+  const ciPoll = setInterval(() => {
+    if (ciInstance) { clearInterval(ciPoll); return; }
+    const candidate = dosInstance && (dosInstance.ci || dosInstance._ci);
+    if (candidate && typeof candidate.persist === 'function') {
+      ciInstance = candidate;
+      console.log('[DOS/PLAY] CI found via poll');
+      clearInterval(ciPoll);
+    }
+  }, 1000);
+  setTimeout(() => clearInterval(ciPoll), 30000);
 }
 
 async function ejectGame() {
@@ -532,44 +546,39 @@ async function showLoadModal() {
       list.innerHTML = '<div style="color:#4a5568;padding:20px;text-align:center">No saves yet.</div>';
       return;
     }
-    // Sort newest first
     saves.sort((a,b) => b.key.localeCompare(a.key));
     list.innerHTML = '';
-    saves.forEach(({key, value}) => {
-      const {meta} = value;
-      const row = document.createElement('div');
+    saves.forEach(function(item) {
+      var key = item.key;
+      var meta = item.value.meta;
+      var row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid #1e2433;';
-      row.innerHTML = \`
-        <div style="flex:1;min-width:0;">
-          <div style="color:#e2e8f0;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${meta.name}</div>
-          <div style="color:#4a5568;font-size:12px;margin-top:2px">\${meta.game||''} · \${meta.date}</div>
-        </div>
-        <button onclick="loadSave('\${key}')" style="padding:6px 14px;background:#1a2035;border:1px solid #2a3050;border-radius:8px;color:#e2e8f0;font-size:13px;cursor:pointer;white-space:nowrap;touch-action:manipulation">Load</button>
-        <button onclick="deleteSave('\${key}',this)" style="padding:6px 10px;background:transparent;border:1px solid #2a3050;border-radius:8px;color:#4a5568;font-size:13px;cursor:pointer;touch-action:manipulation">✕</button>
-      \`;
+      var nameDiv = document.createElement('div');
+      nameDiv.style.cssText = 'flex:1;min-width:0;';
+      var title = document.createElement('div');
+      title.style.cssText = 'color:#e2e8f0;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      title.textContent = meta.name;
+      var sub = document.createElement('div');
+      sub.style.cssText = 'color:#4a5568;font-size:12px;margin-top:2px;';
+      sub.textContent = (meta.game || '') + ' · ' + meta.date;
+      nameDiv.appendChild(title);
+      nameDiv.appendChild(sub);
+      var loadBtn = document.createElement('button');
+      loadBtn.textContent = 'Load';
+      loadBtn.style.cssText = 'padding:6px 14px;background:#1a2035;border:1px solid #2a3050;border-radius:8px;color:#e2e8f0;font-size:13px;cursor:pointer;white-space:nowrap;touch-action:manipulation;flex-shrink:0;';
+      loadBtn.onpointerdown = function() { loadSave(key); };
+      var delBtn = document.createElement('button');
+      delBtn.textContent = '✕';
+      delBtn.style.cssText = 'padding:6px 10px;background:transparent;border:1px solid #2a3050;border-radius:8px;color:#4a5568;font-size:13px;cursor:pointer;touch-action:manipulation;flex-shrink:0;';
+      delBtn.onpointerdown = function() { deleteSave(key, row); };
+      row.appendChild(nameDiv);
+      row.appendChild(loadBtn);
+      row.appendChild(delBtn);
       list.appendChild(row);
     });
   } catch(e) {
     list.innerHTML = '<div style="color:#fc8181;padding:20px">Error loading saves.</div>';
   }
-}
-
-async function loadSave(key) {
-  closeLoadModal();
-  try {
-    const record = await dbGet(key);
-    if (!record) { toast('Save not found.'); return; }
-    showLoad('LOADING SAVE');
-    await startDos(new Uint8Array(record.data), 'zip', record.meta.name + '.jsdos');
-    toast('📂 Loaded: ' + record.meta.name);
-  } catch(e) { hideLoad(); toast('Load failed: ' + (e.message||e)); }
-}
-
-async function deleteSave(key, btn) {
-  if (!confirm('Delete this save?')) return;
-  await dbDelete(key);
-  btn.closest('div[style]').remove();
-  toast('Deleted.');
 }
 
 function closeLoadModal() {
