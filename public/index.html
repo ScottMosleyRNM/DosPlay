@@ -461,11 +461,15 @@ const CC = {Enter:'Enter',Escape:'Escape',Tab:'Tab',Backspace:'Backspace',' ':'S
   ArrowLeft:'ArrowLeft',ArrowUp:'ArrowUp',ArrowRight:'ArrowRight',ArrowDown:'ArrowDown'};
 
 function fireKey(k, down) {
-  const el = getCanvas(); if (!el) return;
   const kc = KC[k] || k.toUpperCase().charCodeAt(0) || 0;
   const code = CC[k] || (k.length===1 ? 'Key'+k.toUpperCase() : k);
-  el.dispatchEvent(new KeyboardEvent(down?'keydown':'keyup',
-    {key:k, code, keyCode:kc, which:kc, bubbles:true, cancelable:true}));
+  const opts = {key:k, code, keyCode:kc, which:kc, bubbles:true, cancelable:true};
+  const type = down ? 'keydown' : 'keyup';
+  // js-dos v8 listens on window
+  window.dispatchEvent(new KeyboardEvent(type, opts));
+  // Also send to canvas as fallback
+  const canvas = document.querySelector('#dos-root canvas');
+  if (canvas) canvas.dispatchEvent(new KeyboardEvent(type, opts));
 }
 function kd(el, key) {
   const k = key || el.dataset.key;
