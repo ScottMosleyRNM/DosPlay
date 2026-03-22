@@ -498,32 +498,29 @@ function ku(el, key, evt) {
 // ── iOS keyboard ─────────────────────────────────────────────
 let iosInp = null;
 
-// Keep F-key row pinned above keyboard using visualViewport
-const fkeyRow = document.getElementById('fkey-row');
+// Float entire controls above keyboard when it opens
 if (window.visualViewport) {
-  const pinFkeyRow = () => {
-    if (!iosInp) return;
-    const vv = window.visualViewport;
-    const offset = window.innerHeight - vv.height - vv.offsetTop;
-    fkeyRow.style.position = 'fixed';
-    fkeyRow.style.bottom = offset + 'px';
-    fkeyRow.style.left = '0';
-    fkeyRow.style.right = '0';
-    fkeyRow.style.zIndex = '1000';
+  const ctrl = document.getElementById('controls');
+  const reposition = () => {
+    const kbHeight = window.innerHeight - window.visualViewport.height;
+    if (kbHeight > 80) {
+      // Keyboard is open — fix controls above it
+      ctrl.style.position = 'fixed';
+      ctrl.style.bottom = kbHeight + 'px';
+      ctrl.style.left = '0';
+      ctrl.style.right = '0';
+      ctrl.style.zIndex = '300';
+    } else {
+      // Keyboard closed — restore to normal flex flow
+      ctrl.style.position = '';
+      ctrl.style.bottom = '';
+      ctrl.style.left = '';
+      ctrl.style.right = '';
+      ctrl.style.zIndex = '';
+    }
   };
-  const unpinFkeyRow = () => {
-    fkeyRow.style.position = '';
-    fkeyRow.style.bottom = '';
-    fkeyRow.style.left = '';
-    fkeyRow.style.right = '';
-    fkeyRow.style.zIndex = '';
-  };
-  window.visualViewport.addEventListener('resize', () => {
-    if (iosInp) pinFkeyRow(); else unpinFkeyRow();
-  });
-  window.visualViewport.addEventListener('scroll', () => {
-    if (iosInp) pinFkeyRow();
-  });
+  window.visualViewport.addEventListener('resize', reposition);
+  window.visualViewport.addEventListener('scroll', reposition);
 }
 
 function toggleKB() {
@@ -556,13 +553,13 @@ function toggleKB() {
     setTimeout(() => {
       try { document.body.removeChild(iosInp); } catch(e) {}
       iosInp = null;
-      if (window.visualViewport) {
-        fkeyRow.style.position = '';
-        fkeyRow.style.bottom = '';
-        fkeyRow.style.left = '';
-        fkeyRow.style.right = '';
-        fkeyRow.style.zIndex = '';
-      }
+      // Restore controls to normal flow
+      const ctrl = document.getElementById('controls');
+      ctrl.style.position = '';
+      ctrl.style.bottom = '';
+      ctrl.style.left = '';
+      ctrl.style.right = '';
+      ctrl.style.zIndex = '';
     }, 200);
   };
   document.body.appendChild(iosInp);
