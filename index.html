@@ -604,6 +604,65 @@ function closeLoadModal() {
   document.getElementById('load-modal').style.display = 'none';
 }
 
+// ── Export all saves to a .dosplay file ──────────────────────
+async function exportSaves() {
+  try {
+    const saves = await dbGetAll();
+    if (saves.length === 0) { toast('No saves to export.'); return; }
+    // Convert binary data to base64 for JSON transport
+    const exportData = saves.map(({key, value}) => ({
+      key,
+      meta: value.meta,
+      data: btoa(String.fromCharCode(...new Uint8Array(
+        value.data instanceof Uint8Array ? value.data : new Uint8Array(value.data)
+      )))
+    }));
+    const json = JSON.stringify({ version: 1, saves: exportData }, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: 'dosplay-saves-' + new Date().toISOString().slice(0,10) + '.dosplay'
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('Exported ' + saves.length + ' save' + (saves.length > 1 ? 's' : '') + ' — check Downloads');
+  } catch(e) {
+    toast('Export failed: ' + (e.message || e));
+  }
+}
+
+// ── Import saves from a .dosplay file ────────────────────────
+function importSaves() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.dosplay,.json';
+  inp.style.cssText = 'position:fixed;top:-9999px;';
+  inp.onchange = async e => {
+    const file = e.target.files[0];
+    document.body.removeChild(inp);
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const obj = JSON.parse(text);
+      if (!obj.saves || !Array.isArray(obj.saves)) throw new Error('Not a valid .dosplay file');
+      let count = 0;
+      for (const item of obj.saves) {
+        // Convert base64 back to Uint8Array
+        const binary = atob(item.data);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        await dbPut(item.key, { data: bytes, meta: item.meta });
+        count++;
+      }
+      toast('Imported ' + count + ' save' + (count > 1 ? 's' : ''));
+      showLoadModal(); // refresh the list
+    } catch(e) {
+      toast('Import failed: ' + (e.message || e));
+    }
+  };
+  document.body.appendChild(inp);
+  inp.click();
+}
+
 async function loadSave(key) {
   closeLoadModal();
   try {
@@ -843,9 +902,14 @@ function buildBundleFromFloppy(d){return buildZip([{name:'floppy.img',data:d},{n
 <!-- Load Modal -->
 <div id="load-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center;padding:20px;">
   <div style="background:#161b27;border:1px solid #1e2433;border-radius:16px;width:100%;max-width:360px;max-height:70vh;display:flex;flex-direction:column;">
-    <div style="padding:16px 20px;border-bottom:1px solid #1e2433;display:flex;align-items:center;justify-content:space-between;">
-      <span style="color:#e2e8f0;font-size:16px;font-weight:700;">📂 Load Save</span>
-      <button onclick="closeLoadModal()" style="background:none;border:none;color:#4a5568;font-size:20px;cursor:pointer;padding:0;touch-action:manipulation;">✕</button>
+    <div style="padding:14px 16px;border-bottom:1px solid #1e2433;display:flex;align-items:center;gap:8px;">
+      <span style="color:#e2e8f0;font-size:15px;font-weight:700;flex:1;">📂 Saves</span>
+      <button onpointerdown="importSaves()" style="padding:5px 10px;background:#1a2035;border:1px solid #2a3050;border-radius:8px;color:#e2e8f0;font-size:12px;cursor:pointer;touch-action:manipulation;">⬆ Import</button>
+      <button onpointerdown="exportSaves()" style="padding:5px 10px;background:#1a2035;border:1px solid #2a3050;border-radius:8px;color:#e2e8f0;font-size:12px;cursor:pointer;touch-action:manipulation;">⬇ Export All</button>
+      <button onclick="closeLoadModal()" style="background:none;border:none;color:#4a5568;font-size:20px;cursor:pointer;padding:0 0 0 4px;touch-action:manipulation;">✕</button>
+    </div>
+    <div style="padding:8px 14px;background:#0f1117;border-bottom:1px solid #1e2433;font-size:11px;color:#4a5568;">
+      ⚠ Saves stored in browser. Export to keep them safe before clearing web data.
     </div>
     <div id="load-save-list" style="overflow-y:auto;flex:1;"></div>
   </div>
