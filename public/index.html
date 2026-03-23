@@ -538,6 +538,17 @@ function showSaveModal() {
   setTimeout(() => document.getElementById('save-name-input').select(), 50);
 }
 
+// Safe base64 encode — avoids stack overflow on large arrays
+function toBase64(bytes) {
+  if (!(bytes instanceof Uint8Array)) bytes = new Uint8Array(bytes);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
 async function confirmSave() {
   const name = document.getElementById('save-name-input').value.trim();
   if (!name) { toast('Enter a name.'); return; }
@@ -552,7 +563,7 @@ async function confirmSave() {
     await dbPut(key, { data, meta });
 
     // 2. Auto-download as a file — survives browser data clearing
-    const exportObj = [{ key, meta, data: btoa(String.fromCharCode(...new Uint8Array(data))) }];
+    const exportObj = [{ key, meta, data: toBase64(data) }];
     const json = JSON.stringify({ version: 1, saves: exportObj });
     const safeName = name.replace(/[^a-z0-9_\-\s]/gi, '_').trim() || 'save';
     const blob = new Blob([json], { type: 'application/json' });
@@ -629,9 +640,7 @@ async function exportSaves() {
     const exportData = saves.map(({key, value}) => ({
       key,
       meta: value.meta,
-      data: btoa(String.fromCharCode(...new Uint8Array(
-        value.data instanceof Uint8Array ? value.data : new Uint8Array(value.data)
-      )))
+      data: toBase64(value.data)
     }));
     const json = JSON.stringify({ version: 1, saves: exportData }, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
