@@ -396,6 +396,10 @@ let currentGameName = '';
 
 async function loadGame(file) {
   const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'rar') {
+    showErr('RAR files are not supported. Please extract the RAR and re-zip the game folder.');
+    return;
+  }
   if (!['zip','img','ima','exe','com','bat','jsdos'].includes(ext)) {
     showErr('Unsupported: .' + ext); return;
   }
@@ -923,7 +927,8 @@ function pickExe(ns) {
   // Always exclude: installers, DOSBox utilities, known non-launchers
   const exclude = /setup|install|config|patch|update|uninst/i;
   const utilNames = ['autoexec.bat','command.com','makepath.com','exists.com',
-                     'godir.com','space.com','what.exe','moniter.com','_pq.bat'];
+                     'godir.com','space.com','what.exe','moniter.com','_pq.bat',
+                     'cwsdpmi.exe','winsetup.exe','removespeech.exe'];
   const candidates = ns.filter(n => !exclude.test(n) && !utilNames.includes(base(n)));
   const pool = candidates.length ? candidates : ns;
   // Prefer known Sierra/game launcher names specifically
@@ -975,30 +980,74 @@ async function ensureJsdosBundle(zip) {
 
   // Find executables (original case preserved for path use)
   const exes=clean.filter(n=>/\.(exe|com|bat)$/i.test(n));
+  const imgs=clean.filter(n=>/\.img$/i.test(n));
   const picked=exes.length?pickExe(exes.map(n=>n.toLowerCase())):null;
 
   // Get original-case path for the picked exe
   const pickedOrig=picked?clean.find(n=>n.toLowerCase()===picked):null;
+
+  // Read existing dosbox.conf from ZIP root if present (e.g. KQ1PCJR)
+  let extraConf='';
+  const existingConf=names.find(n=>n.toLowerCase()==='dosbox.conf');
+  if(existingConf){
+    try{
+      // Extract dosbox.conf bytes from local header
+      const v2=new DataView(zip.buffer,zip.byteOffset,zip.byteLength);
+      let cpos=0;
+      for(let i=0;i<names.length;i++){
+        const sig=v2.getUint32(cpos,true);
+        if(sig!==0x04034b50)break;
+        const nl2=v2.getUint16(cpos+26,true),xl2=v2.getUint16(cpos+28,true);
+        const name2=new TextDecoder().decode(zip.subarray(cpos+30,cpos+30+nl2));
+        const dataStart=cpos+30+nl2+xl2;
+        const compSize=v2.getUint32(cpos+18,true);
+        if(name2.toLowerCase()==='dosbox.conf'){
+          const method=v2.getUint16(cpos+8,true);
+          if(method===0){
+            const text=new TextDecoder().decode(zip.subarray(zip.byteOffset+dataStart,zip.byteOffset+dataStart+compSize));
+            // Extract machine/cpu settings but not autoexec
+            const lines=text.split('\n').filter(l=>!/^\[autoexec\]/i.test(l)&&!l.trim().startsWith('@')&&!/^(mount|imgmount|c:|a:)/i.test(l.trim()));
+            extraConf=lines.join('\n');
+          }
+          break;
+        }
+        cpos=dataStart+compSize;
+      }
+    }catch(e){console.warn('Could not read dosbox.conf from ZIP',e);}
+  }
 
   let ae='[autoexec]\n';
   if(pickedOrig){
     const parts=pickedOrig.split('/');
     const exeName=parts[parts.length-1].toUpperCase();
     if(parts.length===1){
-      // Exe at ZIP root
       ae+='mount c .\nc:\n'+exeName+'\n';
     } else {
-      // Exe in a subdirectory — mount that directory directly as C:
-      // This avoids 8.3 name guessing for long directory names
       const gameDir=parts.slice(0,-1).join('/');
       ae+='mount c '+gameDir+'\nc:\n'+exeName+'\n';
     }
+  } else if(imgs.length===1){
+    // Single floppy/disk image in ZIP — mount it
+    const imgName=imgs[0].split('/').pop();
+    const imgDir=imgs[0].includes('/')?imgs[0].split('/').slice(0,-1).join('/'):'';
+    if(imgDir) ae+='mount c '+imgDir+'\nc:\n';
+    else ae+='mount c .\nc:\n';
+    ae+='imgmount a '+imgName+' -t floppy\na:\n';
+  } else if(imgs.length>1){
+    throw new Error('This ZIP contains '+imgs.length+' disk images (multi-disk game). Multi-disk games are not currently supported.');
   } else {
     ae+='mount c .\nc:\n';
   }
 
-  // Append dosbox.conf to the original ZIP — no repacking needed
-  return appendToZip(zip,[{name:'.jsdos/dosbox.conf',data:enc(dosConf(ae))}]);
+  // Build final dosbox conf — merge existing conf settings if found, then our autoexec
+  let finalConf;
+  if(extraConf&&extraConf.trim()){
+    finalConf=extraConf.trim()+'\n'+ae;
+  } else {
+    finalConf=dosConf(ae);
+  }
+
+  return appendToZip(zip,[{name:'.jsdos/dosbox.conf',data:enc(finalConf)}]);
 }
 
 
