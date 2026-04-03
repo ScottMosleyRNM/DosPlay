@@ -293,7 +293,7 @@ body {
   <div id="frow">
     <div id="fscroll">
       <div class="fk" id="type-btn" onclick="toggleKB()">⌨ Type</div>
-      <div class="fk" onpointerdown="kd(this,'Escape',event)" onpointerup="ku(this,'Escape',event)">ESC</div>
+      <div class="fk" data-fkey="Escape">ESC</div>
       <div class="fk" onpointerdown="kd(this,'F1',event)"  onpointerup="ku(this,'F1',event)">F1</div>
       <div class="fk" onpointerdown="kd(this,'F2',event)"  onpointerup="ku(this,'F2',event)">F2</div>
       <div class="fk" onpointerdown="kd(this,'F3',event)"  onpointerup="ku(this,'F3',event)">F3</div>
@@ -303,7 +303,7 @@ body {
       <div class="fk" onpointerdown="kd(this,'F7',event)"  onpointerup="ku(this,'F7',event)">F7</div>
       <div class="fk" onpointerdown="kd(this,'F8',event)"  onpointerup="ku(this,'F8',event)">F8</div>
       <div class="fk" onpointerdown="kd(this,'F9',event)"  onpointerup="ku(this,'F9',event)">F9</div>
-      <div class="fk" onpointerdown="kd(this,'F10',event)" onpointerup="ku(this,'F10',event)">F10</div>
+      <div class="fk" data-fkey="F10">F10</div>
     </div>
   </div>
 
@@ -818,15 +818,52 @@ function toggleKB() {
   iosInp.focus();
 }
 
-// ── F-key scroll ─────────────────────────────────────────────
+// ── F-key bar: scroll-aware tap handler ─────────────────────
+// Only fires a key if finger didn't scroll (moved < 8px horizontally)
 (function(){
-  const s = document.getElementById('fscroll');
-  let sx=0, ss=0;
-  s.addEventListener('touchstart', e=>{sx=e.touches[0].clientX; ss=s.scrollLeft;},{passive:true});
-  s.addEventListener('touchmove', e=>{
-    const dx=sx-e.touches[0].clientX;
-    if(Math.abs(dx)>5){s.scrollLeft=ss+dx; e.preventDefault();}
-  },{passive:false});
+  const bar = document.getElementById('fscroll');
+  let startX = 0, startScroll = 0, didScroll = false, activeBtn = null;
+
+  bar.addEventListener('pointerdown', e => {
+    startX = e.clientX;
+    startScroll = bar.scrollLeft;
+    didScroll = false;
+    activeBtn = e.target.closest('[data-fkey]');
+    if (activeBtn) {
+      // Visual feedback immediately on press
+      activeBtn.style.opacity = '0.6';
+    }
+  }, { passive: true });
+
+  bar.addEventListener('pointermove', e => {
+    const dx = Math.abs(e.clientX - startX);
+    if (dx > 8) {
+      didScroll = true;
+      // Scroll the bar
+      bar.scrollLeft = startScroll - (e.clientX - startX);
+      // Cancel visual feedback if we're scrolling
+      if (activeBtn) activeBtn.style.opacity = '';
+    }
+  }, { passive: true });
+
+  bar.addEventListener('pointerup', e => {
+    if (activeBtn) activeBtn.style.opacity = '';
+    if (!didScroll && activeBtn) {
+      const key = activeBtn.dataset.fkey;
+      if (key) {
+        fireKey(key, true);
+        setTimeout(() => fireKey(key, false), 80);
+      }
+    }
+    activeBtn = null;
+    didScroll = false;
+  }, { passive: true });
+
+  bar.addEventListener('pointercancel', () => {
+    if (activeBtn) activeBtn.style.opacity = '';
+    activeBtn = null;
+    didScroll = false;
+  }, { passive: true });
 })();
 
 // ── ZIP utils ────────────────────────────────────────────────
