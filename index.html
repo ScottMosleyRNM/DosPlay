@@ -922,101 +922,63 @@ function pickExe(ns){return ns.filter(n=>!/setup|install|config|patch|update|uni
 function dosConf(ae){return`[sdl]\nautolock=false\n[dosbox]\nmachine=svga_s3\nmemsize=16\n[cpu]\ncore=auto\ncputype=auto\ncycles=auto\n[render]\nframeskip=0\naspect=false\nscaler=none\n[sblaster]\nsbtype=sb16\nsbbase=220\nirq=7\ndma=1\nhdma=5\noplmode=auto\noplrate=44100\n[mixer]\nnosound=false\nrate=44100\n${ae}`;}
 
 async function ensureJsdosBundle(zip) {
-  // Parse central directory
+  // Parse central directory to get filenames
   const v=new DataView(zip.buffer,zip.byteOffset,zip.byteLength);
   let ei=-1;for(let i=zip.length-22;i>=0;i--)if(v.getUint32(i,true)===0x06054b50){ei=i;break;}
   if(ei<0)throw new Error('Not a valid ZIP');
   const cnt=v.getUint16(ei+8,true),coff=v.getUint32(ei+16,true);
   const dec=new TextDecoder();
-  const entries=[];let pos=coff;
+  const names=[];let pos=coff;
   for(let i=0;i<cnt;i++){
     if(v.getUint32(pos,true)!==0x02014b50)break;
     const nl=v.getUint16(pos+28,true),xl=v.getUint16(pos+30,true),cl=v.getUint16(pos+32,true);
-    const loff=v.getUint32(pos+42,true);
-    entries.push({name:dec.decode(zip.subarray(pos+46,pos+46+nl)),loff});
+    names.push(dec.decode(zip.subarray(pos+46,pos+46+nl)));
     pos+=46+nl+xl+cl;
   }
 
-  // Already a jsdos bundle
-  if(entries.some(e=>e.name.toLowerCase()==='.jsdos/dosbox.conf'))return zip;
+  // Already a valid jsdos bundle — pass through untouched
+  if(names.some(n=>n.toLowerCase()==='.jsdos/dosbox.conf'))return zip;
 
-  // Filter out Mac junk: __MACOSX/, ._files, .DS_Store, .app wrappers, READMEs, URLs
-  const junk=/^__macosx\/|^.*\._[^/]+$|\.ds_store$|\.app\/|^.*\/readme\.txt$|^.*\.url$/i;
-  const clean=entries.filter(e=>!junk.test(e.name)&&!e.name.endsWith('/'));
+  // Filter Mac/metadata junk — keep original case for paths
+  const clean=names.filter(n=>
+    !/^__macosx\//i.test(n) &&
+    !/(^|\/)\._[^/]+$/.test(n) &&
+    !n.toLowerCase().endsWith('.ds_store') &&
+    !n.toLowerCase().endsWith('.url') &&
+    !n.endsWith('/')
+  );
 
-  if(clean.length===0)throw new Error('No game files found in ZIP. This may be a wrapper-only archive.');
+  if(clean.length===0)throw new Error('No game files found in ZIP. This may be a wrapper-only archive (e.g. a .7z stub).');
 
-  // Find the game root: longest common prefix before any game files
-  // Detect deep nesting (.app/Contents/Resources/gamedir/) and strip it
-  const allNames=clean.map(e=>e.name.toLowerCase());
-  const exeNames=allNames.filter(n=>/\.(exe|com|bat)$/.test(n));
-  const nonExe=allNames.filter(n=>!/\.(exe|com|bat)$/.test(n));
+  // Find executables (original case preserved for path use)
+  const exes=clean.filter(n=>/\.(exe|com|bat)$/i.test(n));
+  const picked=exes.length?pickExe(exes.map(n=>n.toLowerCase())):null;
 
-  // Find the directory prefix to strip - the folder containing the executables
-  let prefix='';
-  if(exeNames.length>0){
-    const exeParts=exeNames[0].split('/');
-    if(exeParts.length>1){
-      // All files share this parent directory prefix
-      const candidate=exeParts.slice(0,-1).join('/')+'/';
-      if(exeNames.every(e=>e.startsWith(candidate))&&
-         clean.filter(e=>!e.name.toLowerCase().startsWith(candidate)).length===0){
-        prefix=candidate;
-      } else {
-        // Find deepest common ancestor of all exe files
-        const deepestDir=exeParts.slice(0,-1).join('/')+'/';
-        // Verify most other files share this prefix too
-        const gameFiles=clean.filter(e=>e.name.toLowerCase().startsWith(deepestDir));
-        if(gameFiles.length>clean.length*0.5){prefix=deepestDir;}
-        else{
-          // Try one level up
-          const oneLevelUp=exeParts.slice(0,-2).join('/')+(exeParts.length>2?'/':'');
-          prefix=oneLevelUp;
-        }
-      }
+  // Get original-case path for the picked exe
+  const pickedOrig=picked?clean.find(n=>n.toLowerCase()===picked):null;
+
+  let ae='[autoexec]\n';
+  if(pickedOrig){
+    const parts=pickedOrig.split('/');
+    const exeName=parts[parts.length-1].toUpperCase();
+    if(parts.length===1){
+      // Exe at ZIP root
+      ae+='mount c .\nc:\n'+exeName+'\n';
+    } else {
+      // Exe in a subdirectory — mount that directory directly as C:
+      // This avoids 8.3 name guessing for long directory names
+      const gameDir=parts.slice(0,-1).join('/');
+      ae+='mount c '+gameDir+'\nc:\n'+exeName+'\n';
     }
+  } else {
+    ae+='mount c .\nc:\n';
   }
 
-  // Extract file data from the ZIP and rebuild with stripped prefixes
-  function extractEntry(entry){
-    const lh=entry.loff;
-    const lv=new DataView(zip.buffer,zip.byteOffset+lh,30);
-    const nl2=lv.getUint16(26,true),xl2=lv.getUint16(28,true);
-    const dataStart=lh+30+nl2+xl2;
-    const compSize=lv.getUint32(18,true);
-    const method=lv.getUint16(8,true);
-    if(method!==0)return null; // skip compressed (we'll just keep as-is)
-    return zip.subarray(zip.byteOffset+dataStart,zip.byteOffset+dataStart+compSize);
-  }
-
-  // Build new ZIP with stripped paths
-  const newFiles=[];
-  for(const entry of clean){
-    const shortName=prefix?entry.name.slice(prefix.length):entry.name;
-    if(!shortName||shortName.endsWith('/'))continue;
-    const data=extractEntry(entry);
-    if(data)newFiles.push({name:shortName,data});
-  }
-
-  if(newFiles.length===0)throw new Error('Could not extract game files from ZIP.');
-
-  // Build autoexec from the stripped names
-  const strippedExes=newFiles.map(f=>f.name.toLowerCase()).filter(n=>/\.(exe|com|bat)$/.test(n));
-  const picked=strippedExes.length?pickExe(strippedExes):null;
-  let ae='[autoexec]\nmount c .\nc:\n';
-  if(picked){
-    const p=picked.split('/');
-    if(p.length===1){ae+=picked.toUpperCase()+'\n';}
-    else{
-      // Multiple levels - build cd chain
-      const dirs=p.slice(0,-1);
-      ae+=dirs.map(d=>'cd '+toDos83(d)).join('\n')+'\n'+p.at(-1).toUpperCase()+'\n';
-    }
-  }
-
-  newFiles.push({name:'.jsdos/dosbox.conf',data:enc(dosConf(ae))});
-  return buildZip(newFiles);
+  // Append dosbox.conf to the original ZIP — no repacking needed
+  return appendToZip(zip,[{name:'.jsdos/dosbox.conf',data:enc(dosConf(ae))}]);
 }
+
+
 function buildBundleFromExe(d,n){return buildZip([{name:n,data:d},{name:'.jsdos/dosbox.conf',data:enc(dosConf(`[autoexec]\nmount c .\nc:\n${n.toUpperCase()}\n`))}]);}
 function buildBundleFromFloppy(d){return buildZip([{name:'floppy.img',data:d},{name:'.jsdos/dosbox.conf',data:enc(dosConf('[autoexec]\nimgmount a floppy.img -t floppy\na:\n'))}]);}
 </script>
