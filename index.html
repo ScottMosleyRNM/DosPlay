@@ -918,7 +918,25 @@ function appendToZip(zip,files) {
   return concat([zip.subarray(0,coff),...lps,ecd,ncd,ne]);
 }
 function toDos83(n){const c=n.replace(/\\/g,'/').split('/').pop().split('.')[0].replace(/[^A-Za-z0-9]/g,'').toUpperCase();return c.length<=8?c:c.slice(0,6)+'~1';}
-function pickExe(ns){return ns.filter(n=>!/setup|install|config|patch|update|uninst/i.test(n))[0]||ns[0];}
+function pickExe(ns) {
+  const base = n => n.split('/').pop().toLowerCase();
+  // Always exclude: installers, DOSBox utilities, known non-launchers
+  const exclude = /setup|install|config|patch|update|uninst/i;
+  const utilNames = ['autoexec.bat','command.com','makepath.com','exists.com',
+                     'godir.com','space.com','what.exe','moniter.com','_pq.bat'];
+  const candidates = ns.filter(n => !exclude.test(n) && !utilNames.includes(base(n)));
+  const pool = candidates.length ? candidates : ns;
+  // Prefer known Sierra/game launcher names specifically
+  const preferred = ['sierra.com','sierra.exe','sciv.exe','start.exe','game.exe'];
+  for (const p of preferred) {
+    const found = pool.find(n => base(n) === p);
+    if (found) return found;
+  }
+  // Prefer .exe > .com > .bat
+  return pool.find(n => n.endsWith('.exe'))
+      || pool.find(n => n.endsWith('.com'))
+      || pool[0] || ns[0];
+}
 function dosConf(ae){return`[sdl]\nautolock=false\n[dosbox]\nmachine=svga_s3\nmemsize=16\n[cpu]\ncore=auto\ncputype=auto\ncycles=auto\n[render]\nframeskip=0\naspect=false\nscaler=none\n[sblaster]\nsbtype=sb16\nsbbase=220\nirq=7\ndma=1\nhdma=5\noplmode=auto\noplrate=44100\n[mixer]\nnosound=false\nrate=44100\n${ae}`;}
 
 async function ensureJsdosBundle(zip) {
@@ -948,7 +966,12 @@ async function ensureJsdosBundle(zip) {
     !n.endsWith('/')
   );
 
-  if(clean.length===0)throw new Error('No game files found in ZIP. This may be a wrapper-only archive (e.g. a .7z stub).');
+  if(clean.length===0)throw new Error('No game files found in this ZIP — it may be a stub or wrapper with no actual game data.');
+
+  // Detect ScummVM games — incompatible with DOSBox
+  if(clean.some(n=>/\/scummvm(\.exe)?$/i.test(n))){
+    throw new Error('This game uses ScummVM and is not compatible with DOS/PLAY. Try finding a DOSBox-compatible version.');
+  }
 
   // Find executables (original case preserved for path use)
   const exes=clean.filter(n=>/\.(exe|com|bat)$/i.test(n));
