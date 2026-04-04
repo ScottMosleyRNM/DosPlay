@@ -1024,13 +1024,14 @@ async function ensureJsdosBundle(zip) {
       ae+='mount c .\nc:\n'+exeName+'\n';
     } else {
       const gameDir=parts.slice(0,-1).join('/');
-      ae+='mount c '+gameDir+'\nc:\n'+exeName+'\n';
+      const qd=gameDir.includes(' ')?'"'+gameDir+'"':gameDir;
+      ae+='mount c '+qd+'\nc:\n'+exeName+'\n';
     }
   } else if(imgs.length===1){
     // Single floppy/disk image in ZIP — mount it
     const imgName=imgs[0].split('/').pop();
     const imgDir=imgs[0].includes('/')?imgs[0].split('/').slice(0,-1).join('/'):'';
-    if(imgDir) ae+='mount c '+imgDir+'\nc:\n';
+    if(imgDir){const qi=imgDir.includes(' ')?'"'+imgDir+'"':imgDir;ae+='mount c '+qi+'\nc:\n';}
     else ae+='mount c .\nc:\n';
     ae+='imgmount a '+imgName+' -t floppy\na:\n';
   } else if(imgs.length>1){
