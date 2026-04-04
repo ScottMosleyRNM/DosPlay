@@ -1039,13 +1039,10 @@ async function ensureJsdosBundle(zip) {
     // Pick the group with fewest images (prefer 3.5" 4-disk over 5.25" 9-disk etc.)
     const bestGroup=Object.values(imgGroups).reduce((a,b)=>a.length<=b.length?a:b);
     const sortedImgs=bestGroup.slice().sort();
-    // Quote each path if it has spaces or special chars
-    const qimg=p=>{const n=p.split('/').pop();return (n.includes(' ')||n.includes('(')||n.includes('['))?'"'+n+'"':n;};
-    const imgDir=sortedImgs[0].includes('/')?sortedImgs[0].split('/').slice(0,-1).join('/'):'.';
-    const qi=imgDir.includes(' ')||imgDir.includes('(')||imgDir.includes('[')?'"'+imgDir+'"':imgDir;
-    if(imgDir!=='.')ae+='mount c '+qi+'\nc:\n';
-    else ae+='mount c .\nc:\n';
-    const imgArgs=sortedImgs.map(qimg).join(' ');
+    // Use full ZIP-relative paths so DOSBox can find them from Z: root
+    // Quote paths that contain spaces, parentheses, or brackets
+    const qfull=p=>(p.includes(' ')||p.includes('(')||p.includes('[')?'"'+p+'"':p);
+    const imgArgs=sortedImgs.map(qfull).join(' ');
     ae+='imgmount a '+imgArgs+' -t floppy\na:\n';
   } else {
     ae+='mount c .\nc:\n';
