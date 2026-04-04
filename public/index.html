@@ -1027,15 +1027,26 @@ async function ensureJsdosBundle(zip) {
       const qd=gameDir.includes(' ')?'"'+gameDir+'"':gameDir;
       ae+='mount c '+qd+'\nc:\n'+exeName+'\n';
     }
-  } else if(imgs.length===1){
-    // Single floppy/disk image in ZIP — mount it
-    const imgName=imgs[0].split('/').pop();
-    const imgDir=imgs[0].includes('/')?imgs[0].split('/').slice(0,-1).join('/'):'';
-    if(imgDir){const qi=imgDir.includes(' ')?'"'+imgDir+'"':imgDir;ae+='mount c '+qi+'\nc:\n';}
+  } else if(imgs.length>=1){
+    // One or more floppy/disk images — mount all with imgmount for multi-disk support
+    // For ZIPs with multiple disk sets, pick the set with fewest disks
+    const imgGroups={};
+    imgs.forEach(p=>{
+      const dir=p.includes('/')?p.split('/').slice(0,-1).join('/'):'.';
+      if(!imgGroups[dir])imgGroups[dir]=[];
+      imgGroups[dir].push(p);
+    });
+    // Pick the group with fewest images (prefer 3.5" 4-disk over 5.25" 9-disk etc.)
+    const bestGroup=Object.values(imgGroups).reduce((a,b)=>a.length<=b.length?a:b);
+    const sortedImgs=bestGroup.slice().sort();
+    // Quote each path if it has spaces or special chars
+    const qimg=p=>{const n=p.split('/').pop();return (n.includes(' ')||n.includes('(')||n.includes('['))?'"'+n+'"':n;};
+    const imgDir=sortedImgs[0].includes('/')?sortedImgs[0].split('/').slice(0,-1).join('/'):'.';
+    const qi=imgDir.includes(' ')||imgDir.includes('(')||imgDir.includes('[')?'"'+imgDir+'"':imgDir;
+    if(imgDir!=='.')ae+='mount c '+qi+'\nc:\n';
     else ae+='mount c .\nc:\n';
-    ae+='imgmount a '+imgName+' -t floppy\na:\n';
-  } else if(imgs.length>1){
-    throw new Error('This ZIP contains '+imgs.length+' disk images (multi-disk game). Multi-disk games are not currently supported.');
+    const imgArgs=sortedImgs.map(qimg).join(' ');
+    ae+='imgmount a '+imgArgs+' -t floppy\na:\n';
   } else {
     ae+='mount c .\nc:\n';
   }
