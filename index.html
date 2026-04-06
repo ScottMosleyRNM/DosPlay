@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DOS/PLAY">
+<meta name="theme-color" content="#0f1117">
+<link rel="manifest" href="/DosPlay/manifest.json">
+<title>DOS/PLAY</title>
+<link rel="stylesheet" href="/DosPlay/js-dos.css">
+<script src="/DosPlay/js-dos.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+body {
+  background: #0f1117;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* GAME AREA: takes all space above controls */
+#game-wrap {
+  flex: 1;
+  min-height: 0;
+  background: #000;
+  position: relative;
+}
+#dos-root {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* js-dos fills its container, canvas pinned to top */
+#dos-root > div {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: flex-start !important;
+}
+#dos-root canvas {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: top center;
+  image-rendering: pixelated;
+}
+
+/* Hide js-dos sidebar/chrome — we have our own controls */
+.jsdos-rso .sidebar,
+.jsdos-rso .sidebar-thin,
+.jsdos-rso .emulator-options { display: none !important; }
+
+/* Launch screen sits inside game-wrap */
+#launch {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #0f1117;
+  gap: 20px;
+  padding: 24px;
+  z-index: 10;
+}
+#launch.hidden { display: none; }
+#launch h2 { color: #e2e8f0; font-size: 20px; }
+#launch p  { color: #4a5568; font-size: 13px; text-align: center; }
+#launch-btn {
+  padding: 12px 28px;
+  background: #1a2035;
+  border: 1px solid #2a3050;
+  border-radius: 12px;
+  color: #e2e8f0;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#launch-btn:active { background: #232d45; }
+#err { color: #fc8181; font-size: 12px; text-align: center; display: none; }
+#err.show { display: block; }
+
+/* CONTROLS: fixed height at bottom */
+#controls {
+  flex-shrink: 0;
+  background: #0f1117;
+  border-top: 1px solid #1e2433;
+}
+
+/* Prevent double-tap zoom on entire controls area */
+#controls, #controls * {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* F-key row */
+#frow {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border-bottom: 1px solid #1e2433;
+}
+#fscroll {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  overflow-x: auto;
+  height: 100%;
+  scrollbar-width: none;
+}
+#fscroll::-webkit-scrollbar { display: none; }
+.fk {
+  flex-shrink: 0;
+  height: 36px;
+  min-width: 44px;
+  padding: 0 12px;
+  background: #1a2035;
+  border: 1px solid #1e2433;
+  border-radius: 10px;
+  color: #e2e8f0;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+.fk:active { background: #232d45; }
+#type-btn { gap: 5px; padding: 0 14px; }
+
+/* Tab row */
+#tabs {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 6px;
+  border-bottom: 1px solid #1e2433;
+}
+.tab {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  color: #4a5568;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  white-space: nowrap;
+}
+.tab.on { background: #1a2035; border-color: #1e2433; color: #e2e8f0; }
+.tab:active { background: #232d45; color: #e2e8f0; }
+#tab-v { margin-left: auto; }
+
+/* D-pad */
+#dpad-wrap {
+  height: 210px;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  gap: 10px;
+  overflow: hidden;
+}
+#dpad-wrap.hide { display: none; }
+
+#action-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 76px;
+  flex-shrink: 0;
+}
+.ab {
+  height: 44px;
+  background: #1a2035;
+  border: 1px solid #1e2433;
+  border-radius: 12px;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+.ab:active { background: #232d45; }
+
+#dpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 6px;
+  flex: 1;
+  height: 100%;
+}
+.dp {
+  background: #1a2035;
+  border: 1px solid #1e2433;
+  border-radius: 12px;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  min-width: 0;
+  min-height: 0;
+}
+.dp:active { background: #232d45; transform: scale(0.93); }
+.dp-blank { background: transparent !important; border-color: transparent !important; }
+.dp-mid   { background: #0f1117 !important; border-color: #0f1117 !important; color: #2a3050; font-size: 18px; }
+
+/* Loading overlay */
+#loading {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15,17,23,0.88);
+  z-index: 999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+#loading.show { display: flex; }
+.spin {
+  width: 36px; height: 36px;
+  border: 3px solid #1e2433;
+  border-top-color: #e2e8f0;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#ltxt { color: #4a5568; font-size: 12px; letter-spacing: 2px; }
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 320px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: #1a2035;
+  border: 1px solid #2a3050;
+  color: #e2e8f0;
+  font-size: 13px;
+  padding: 7px 18px;
+  border-radius: 20px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1000;
+  white-space: nowrap;
+  transition: opacity 0.2s, transform 0.2s;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- GAME AREA (fills everything above controls) -->
+<div id="game-wrap">
+  <div id="dos-root"></div>
+  <div id="launch">
+    <div style="font-size:48px">💾</div>
+    <h2>DOS/PLAY</h2>
+    <p>Tap the button to load a game<br>.zip folder · .img disk · .exe file</p>
+    <div id="launch-btn" onclick="document.getElementById('file-input').click()">⬆ Load Game</div>
+    <div id="err"></div>
+  </div>
+</div>
+
+<!-- CONTROLS (always visible below game) -->
+<div id="controls">
+
+  <div id="frow">
+    <div id="fscroll">
+      <div class="fk" id="type-btn" onclick="toggleKB()">⌨ Type</div>
+      <div class="fk" data-fkey="Escape">ESC</div>
+      <div class="fk" onpointerdown="kd(this,'F1',event)"  onpointerup="ku(this,'F1',event)">F1</div>
+      <div class="fk" onpointerdown="kd(this,'F2',event)"  onpointerup="ku(this,'F2',event)">F2</div>
+      <div class="fk" onpointerdown="kd(this,'F3',event)"  onpointerup="ku(this,'F3',event)">F3</div>
+      <div class="fk" onpointerdown="kd(this,'F4',event)"  onpointerup="ku(this,'F4',event)">F4</div>
+      <div class="fk" onpointerdown="kd(this,'F5',event)"  onpointerup="ku(this,'F5',event)">F5</div>
+      <div class="fk" onpointerdown="kd(this,'F6',event)"  onpointerup="ku(this,'F6',event)">F6</div>
+      <div class="fk" onpointerdown="kd(this,'F7',event)"  onpointerup="ku(this,'F7',event)">F7</div>
+      <div class="fk" onpointerdown="kd(this,'F8',event)"  onpointerup="ku(this,'F8',event)">F8</div>
+      <div class="fk" onpointerdown="kd(this,'F9',event)"  onpointerup="ku(this,'F9',event)">F9</div>
+      <div class="fk" data-fkey="F10">F10</div>
+    </div>
+  </div>
+
+  <div id="tabs">
+    <div class="tab on" id="tab-d" onclick="toggleDpad()">D-PAD</div>
+    <div class="tab" onclick="saveState()">💾 Save Files</div>
+    <div class="tab" onclick="loadState()">📂 Restore</div>
+    <div class="tab" onclick="ejectGame()">⏏ Eject</div>
+    <div class="tab" id="tab-v" onclick="toggleDpad()">▾</div>
+  </div>
+
+  <div id="dpad-wrap">
+    <div id="action-col">
+      <div class="ab" onpointerdown="kd(this,'Enter',event)"  onpointerup="ku(this,'Enter',event)">ENTER</div>
+      <div class="ab" onpointerdown="kd(this,'Escape',event)" onpointerup="ku(this,'Escape',event)">ESC</div>
+      <div class="ab" onpointerdown="kd(this,' ',event)"      onpointerup="ku(this,' ',event)">SPACE</div>
+      <div class="ab" onpointerdown="kd(this,'Tab',event)"    onpointerup="ku(this,'Tab',event)">TAB</div>
+    </div>
+    <div id="dpad-grid">
+      <div class="dp dp-blank"></div>
+      <div class="dp" data-key="ArrowUp"    onpointerdown="kd(this,null,event)" onpointerup="ku(this,null,event)">↑ Up</div>
+      <div class="dp dp-blank"></div>
+      <div class="dp" data-key="ArrowLeft"  onpointerdown="kd(this,null,event)" onpointerup="ku(this,null,event)">← Left</div>
+      <div class="dp dp-mid">🎮</div>
+      <div class="dp" data-key="ArrowRight" onpointerdown="kd(this,null,event)" onpointerup="ku(this,null,event)">→ Right</div>
+      <div class="dp dp-blank"></div>
+      <div class="dp" data-key="ArrowDown"  onpointerdown="kd(this,null,event)" onpointerup="ku(this,null,event)">↓ Down</div>
+      <div class="dp dp-blank"></div>
+    </div>
+  </div>
+
+</div><!-- /controls -->
+
+<input type="file" id="file-input" accept=".zip,.img,.ima,.exe,.com,.bat" style="display:none;position:fixed;top:-9999px;">
+<div id="loading"><div class="spin"></div><div id="ltxt">LOADING</div></div>
+<div id="toast"></div>
+
+<script>
+// ── Prevent double-tap zoom globally on iOS ─────────────────
+(function() {
+  let lastTap = 0;
+  document.addEventListener('touchend', function(e) {
+    const now = Date.now();
+    if (now - lastTap < 350) {
+      e.preventDefault();
+    }
+    lastTap = now;
+  }, { passive: false });
+})();
+
+// ── SW (no auto-reload) ──────────────────────────────────────
+if ('serviceWorker' in navigator)
+  navigator.serviceWorker.register('/DosPlay/sw.js').catch(()=>{});
+
+// ── File input ───────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadGame(e.target.files[0]);
+  e.target.value = '';
+});
+
+// ── UI ───────────────────────────────────────────────────────
+const loading = document.getElementById('loading');
+const ltxt    = document.getElementById('ltxt');
+const toastEl = document.getElementById('toast');
+let toastTmr;
+
+function showLoad(t) { ltxt.textContent = t; loading.classList.add('show'); }
+function hideLoad()  { loading.classList.remove('show'); }
+function showErr(m)  { const e=document.getElementById('err'); e.textContent=m; e.classList.add('show'); }
+function hideErr()   { document.getElementById('err').classList.remove('show'); }
+function toast(m)    {
+  toastEl.textContent = m; toastEl.classList.add('show');
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(() => toastEl.classList.remove('show'), 2500);
+}
+
+// ── Tab toggle ───────────────────────────────────────────────
+let dpadOpen = true;
+function toggleDpad() {
+  dpadOpen = !dpadOpen;
+  document.getElementById('dpad-wrap').classList.toggle('hide', !dpadOpen);
+  document.getElementById('tab-d').classList.toggle('on', dpadOpen);
+  document.getElementById('tab-v').textContent = dpadOpen ? '▾' : '▸';
+}
+
+// ── Game load ────────────────────────────────────────────────
+let dosInstance = null;
+let ciInstance = null; // js-dos CommandInterface, set after ci-ready
+let currentGameName = '';
+
+async function loadGame(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'rar') {
+    showErr('RAR files are not supported. Please extract the RAR and re-zip the game folder.');
+    return;
+  }
+  if (!['zip','img','ima','exe','com','bat','jsdos'].includes(ext)) {
+    showErr('Unsupported: .' + ext); return;
+  }
+  hideErr();
+  showLoad('READING FILE');
+  try {
+    const buf = await file.arrayBuffer();
+    await startDos(new Uint8Array(buf), ext, file.name);
+  } catch(e) {
+    hideLoad();
+    showErr('Error: ' + (e.message || e));
+    document.getElementById('launch').classList.remove('hidden');
+  }
+}
+
+async function startDos(bytes, ext, name) {
+  if (dosInstance) { try { await dosInstance.stop(); } catch(e){} dosInstance = null; }
+
+  document.getElementById('launch').classList.add('hidden');
+  document.getElementById('dos-root').innerHTML = '';
+
+  showLoad('BUILDING BUNDLE');
+  let bundle;
+  if (ext === 'jsdos') {
+    // Already a valid jsdos bundle — pass through untouched
+    bundle = bytes;
+  } else if (ext === 'zip') {
+    bundle = await ensureJsdosBundle(bytes);
+  } else if (/exe|com|bat/.test(ext)) {
+    bundle = buildBundleFromExe(bytes, name);
+  } else {
+    bundle = buildBundleFromFloppy(bytes);
+  }
+
+  showLoad('STARTING DOSBOX');
+  const blob = new Blob([bundle], { type: 'application/zip' });
+  ciInstance = null;
+  currentGameName = name;
+  dosInstance = window.Dos(document.getElementById('dos-root'), {
+    pathPrefix: '/DosPlay/emulators/',
+    noCloud: true, noNetworking: true, workerThread: true,
+    autoStart: true, kiosk: true, thinSidebar: true, renderAspect: '4/3',
+    url: URL.createObjectURL(blob),
+    onEvent: (event, ci) => {
+      if (event === 'ci-ready') {
+        ciInstance = ci;
+        console.log('[DOS/PLAY] CI ready');
+      }
+    },
+  });
+  hideLoad();
+  toast('▶ ' + name);
+  // Fallback: poll for ci on dosInstance in case onEvent doesn't fire
+  const ciPoll = setInterval(() => {
+    if (ciInstance) { clearInterval(ciPoll); return; }
+    const candidate = dosInstance && (dosInstance.ci || dosInstance._ci);
+    if (candidate && typeof candidate.persist === 'function') {
+      ciInstance = candidate;
+      console.log('[DOS/PLAY] CI found via poll');
+      clearInterval(ciPoll);
+    }
+  }, 1000);
+  setTimeout(() => clearInterval(ciPoll), 30000);
+}
+
+async function ejectGame() {
+  if (dosInstance) { try { await dosInstance.stop(); } catch(e){} dosInstance = null; }
+  document.getElementById('dos-root').innerHTML = '';
+  document.getElementById('launch').classList.remove('hidden');
+  toast('Ejected.');
+}
+
+// ── Named saves via IndexedDB ────────────────────────────────
+const DB_NAME = 'dosplay', DB_STORE = 'saves';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function dbPut(key, val) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).put(val, key);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+async function dbGet(key) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(DB_STORE, 'readonly');
+    const req = tx.objectStore(DB_STORE).get(key);
+    req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error);
+  });
+}
+async function dbGetAll() {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(DB_STORE, 'readonly');
+    const store = tx.objectStore(DB_STORE);
+    const keys = [], vals = [];
+    store.openCursor().onsuccess = e => {
+      const cur = e.target.result;
+      if (cur) { keys.push(cur.key); vals.push(cur.value); cur.continue(); }
+      else res(keys.map((k,i) => ({key:k, value:vals[i]})));
+    };
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function dbDelete(key) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).delete(key);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+
+// ── Save modal ───────────────────────────────────────────────
+async function saveState() {
+  if (!ciInstance) { toast('Game not ready yet — wait a moment.'); return; }
+  const saveTab = document.querySelector('.tab[onclick="saveState()"]');
+  if (saveTab) saveTab.textContent = '⏳';
+  try {
+    const data = await ciInstance.persist(false);
+    if (!data) { toast('Nothing to save yet.'); return; }
+    const gameName = currentGameName.replace(/\.[^.]+$/, '') || 'game';
+    const key = 'save_game_' + gameName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const meta = { name: gameName, date: new Date().toLocaleString(), game: currentGameName };
+    await dbPut(key, { data, meta });
+    const exportObj = [{ key, meta, data: toBase64(data) }];
+    const blob = new Blob([JSON.stringify({ version: 1, saves: exportObj })], { type: 'application/json' });
+    const safeName = gameName.replace(/[^a-z0-9_\-\s]/gi, '_').trim() || 'save';
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: safeName + '.dosplay'
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast('💾 Saved — ' + gameName);
+  } catch(e) { toast('Save failed: ' + (e.message||e)); console.error(e); }
+  finally { if (saveTab) saveTab.textContent = '💾 Save Files'; }
+}
+function loadState() {
+  showLoadModal();
+}
+
+// Safe base64 encode — avoids stack overflow on large arrays
+function toBase64(bytes) {
+  if (!(bytes instanceof Uint8Array)) bytes = new Uint8Array(bytes);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+
+async function showLoadModal() {
+  const modal = document.getElementById('load-modal');
+  const list = document.getElementById('load-save-list');
+  list.innerHTML = '<div style="color:#4a5568;padding:20px;text-align:center">Loading...</div>';
+  modal.style.display = 'flex';
+  try {
+    const saves = await dbGetAll();
+    if (saves.length === 0) {
+      list.innerHTML = '<div style="color:#4a5568;padding:20px;text-align:center">No saves yet.</div>';
+      return;
+    }
+    saves.sort((a,b) => b.key.localeCompare(a.key));
+    list.innerHTML = '';
+    saves.forEach(function(item) {
+      var key = item.key;
+      var meta = item.value.meta;
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid #1e2433;';
+      var nameDiv = document.createElement('div');
+      nameDiv.style.cssText = 'flex:1;min-width:0;';
+      var title = document.createElement('div');
+      title.style.cssText = 'color:#e2e8f0;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      title.textContent = meta.name;
+      var sub = document.createElement('div');
+      sub.style.cssText = 'color:#4a5568;font-size:12px;margin-top:2px;';
+      sub.textContent = (meta.game || '') + ' · ' + meta.date;
+      nameDiv.appendChild(title);
+      nameDiv.appendChild(sub);
+      var loadBtn = document.createElement('button');
+      loadBtn.textContent = 'Load';
+      loadBtn.style.cssText = 'padding:6px 14px;background:#1a2035;border:1px solid #2a3050;border-radius:8px;color:#e2e8f0;font-size:13px;cursor:pointer;white-space:nowrap;touch-action:manipulation;flex-shrink:0;';
+      loadBtn.onpointerdown = function() { loadSave(key); };
+      var delBtn = document.createElement('button');
+      delBtn.textContent = '✕';
+      delBtn.style.cssText = 'padding:6px 10px;background:transparent;border:1px solid #2a3050;border-radius:8px;color:#4a5568;font-size:13px;cursor:pointer;touch-action:manipulation;flex-shrink:0;';
+      delBtn.onpointerdown = function() { deleteSave(key, row); };
+      row.appendChild(nameDiv);
+      row.appendChild(loadBtn);
+      row.appendChild(delBtn);
+      list.appendChild(row);
+    });
+  } catch(e) {
+    list.innerHTML = '<div style="color:#fc8181;padding:20px">Error loading saves.</div>';
+  }
+}
+
+function closeLoadModal() {
+  document.getElementById('load-modal').style.display = 'none';
+}
+
+// ── Export all saves to a .dosplay file ──────────────────────
+async function exportSaves() {
+  try {
+    const saves = await dbGetAll();
+    if (saves.length === 0) { toast('No saves to export.'); return; }
+    // Convert binary data to base64 for JSON transport
+    const exportData = saves.map(({key, value}) => ({
+      key,
+      meta: value.meta,
+      data: toBase64(value.data)
+    }));
+    const json = JSON.stringify({ version: 1, saves: exportData }, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: 'dosplay-saves-' + new Date().toISOString().slice(0,10) + '.dosplay'
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('Exported ' + saves.length + ' save' + (saves.length > 1 ? 's' : '') + ' — check Downloads');
+  } catch(e) {
+    toast('Export failed: ' + (e.message || e));
+  }
+}
+
+// ── Import saves from a .dosplay file ────────────────────────
+function importSaves() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.dosplay,.json';
+  inp.style.cssText = 'position:fixed;top:-9999px;';
+  inp.onchange = async e => {
+    const file = e.target.files[0];
+    document.body.removeChild(inp);
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const obj = JSON.parse(text);
+      if (!obj.saves || !Array.isArray(obj.saves)) throw new Error('Not a valid .dosplay file');
+      let count = 0;
+      for (const item of obj.saves) {
+        // Convert base64 back to Uint8Array
+        const binary = atob(item.data);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        await dbPut(item.key, { data: bytes, meta: item.meta });
+        count++;
+      }
+      toast('Imported ' + count + ' save' + (count > 1 ? 's' : ''));
+      showLoadModal(); // refresh the list
+    } catch(e) {
+      toast('Import failed: ' + (e.message || e));
+    }
+  };
+  document.body.appendChild(inp);
+  inp.click();
+}
+
+async function loadSave(key) {
+  closeLoadModal();
+  try {
+    const record = await dbGet(key);
+    if (!record) { toast('Save not found.'); return; }
+    showLoad('LOADING SAVE');
+    // record.data is stored as Uint8Array, retrieve as ArrayBuffer from IDB
+    const bytes = record.data instanceof Uint8Array
+      ? record.data
+      : new Uint8Array(record.data);
+    await startDos(bytes, 'jsdos', (record.meta.name || 'save') + '.jsdos');
+    toast('Game files loaded — use in-game Restore to resume');
+  } catch(e) {
+    hideLoad();
+    toast('Load failed: ' + (e.message || e));
+    console.error('loadSave error:', e);
+  }
+}
+
+async function deleteSave(key, row) {
+  if (!confirm('Delete this save?')) return;
+  await dbDelete(key);
+  if (row && row.parentNode) row.parentNode.removeChild(row);
+  toast('Deleted.');
+}
+
+// ── Keys ─────────────────────────────────────────────────────
+function getCanvas() {
+  return document.querySelector('#dos-root canvas')
+      || document.querySelector('#dos-root .emulator-canvas')
+      || document.getElementById('dos-root');
+}
+const KC = {Enter:13,Escape:27,Tab:9,Backspace:8,' ':32,
+  ArrowLeft:37,ArrowUp:38,ArrowRight:39,ArrowDown:40,
+  F1:112,F2:113,F3:114,F4:115,F5:116,F6:117,F7:118,F8:119,F9:120,F10:121};
+const CC = {Enter:'Enter',Escape:'Escape',Tab:'Tab',Backspace:'Backspace',' ':'Space',
+  ArrowLeft:'ArrowLeft',ArrowUp:'ArrowUp',ArrowRight:'ArrowRight',ArrowDown:'ArrowDown'};
+
+function fireKey(k, down) {
+  const kc = KC[k] || k.toUpperCase().charCodeAt(0) || 0;
+  const code = CC[k] || (k.length===1 ? 'Key'+k.toUpperCase() : k);
+  const opts = {key:k, code, keyCode:kc, which:kc, bubbles:true, cancelable:true};
+  const type = down ? 'keydown' : 'keyup';
+  // js-dos v8 listens on window
+  window.dispatchEvent(new KeyboardEvent(type, opts));
+  // Also send to canvas as fallback
+  const canvas = document.querySelector('#dos-root canvas');
+  if (canvas) canvas.dispatchEvent(new KeyboardEvent(type, opts));
+}
+function kd(el, key, evt) {
+  if (evt) { evt.preventDefault(); evt.stopPropagation(); }
+  const k = key || el.dataset.key;
+  el.style.opacity = '0.6';
+  fireKey(k, true);
+}
+function ku(el, key, evt) {
+  if (evt) { evt.preventDefault(); evt.stopPropagation(); }
+  const k = key || el.dataset.key;
+  el.style.opacity = '';
+  fireKey(k, false);
+}
+
+// ── iOS keyboard ─────────────────────────────────────────────
+let iosInp = null;
+// When the game keyboard opens, float ONLY the F-key row above it.
+// Leave everything else (game, d-pad) untouched.
+function repositionForKB() {
+  const frow = document.getElementById('frow');
+  if (!frow || !window.visualViewport) return;
+  const kbHeight = window.innerHeight - window.visualViewport.height;
+  if (iosInp && kbHeight > 80) {
+    frow.style.position = 'fixed';
+    frow.style.bottom = kbHeight + 'px';
+    frow.style.left = '0';
+    frow.style.right = '0';
+    frow.style.zIndex = '500';
+    frow.style.borderTop = '1px solid #1e2433';
+    frow.style.background = '#0f1117';
+  } else {
+    frow.style.position = '';
+    frow.style.bottom = '';
+    frow.style.left = '';
+    frow.style.right = '';
+    frow.style.zIndex = '';
+    frow.style.borderTop = '';
+    frow.style.background = '';
+  }
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', repositionForKB);
+  window.visualViewport.addEventListener('scroll', repositionForKB);
+}
+
+function toggleKB() {
+  if (iosInp) { iosInp.blur(); return; }
+  // Use input type=text with attributes that suppress iOS accessory bar
+  iosInp = document.createElement('input');
+  iosInp.type = 'text';
+  iosInp.setAttribute('autocomplete', 'off');
+  iosInp.setAttribute('autocorrect', 'off');
+  iosInp.setAttribute('autocapitalize', 'none');
+  iosInp.setAttribute('spellcheck', 'false');
+  iosInp.setAttribute('inputmode', 'text');
+  iosInp.style.cssText = 'position:fixed;top:-999px;left:0;width:1px;height:1px;opacity:0;font-size:16px;border:none;outline:none;';
+  iosInp.oninput = e => {
+    [...e.target.value].forEach(c => { fireKey(c,true); fireKey(c,false); });
+    iosInp.value = '';
+  };
+  iosInp.onkeydown = e => {
+    if (e.key === 'Backspace' || e.key === 'Enter' || e.key === 'Escape') {
+      fireKey(e.key, true);
+      e.preventDefault();
+    }
+  };
+  iosInp.onkeyup = e => {
+    if (e.key === 'Backspace' || e.key === 'Enter' || e.key === 'Escape') {
+      fireKey(e.key, false);
+    }
+  };
+  iosInp.onblur = () => {
+    setTimeout(() => {
+      try { document.body.removeChild(iosInp); } catch(e) {}
+      iosInp = null;
+      repositionForKB();
+    }, 200);
+  };
+  document.body.appendChild(iosInp);
+  iosInp.focus();
+}
+
+// ── F-key bar: scroll-aware tap handler ─────────────────────
+// Only fires a key if finger didn't scroll (moved < 8px horizontally)
+(function(){
+  const bar = document.getElementById('fscroll');
+  let startX = 0, startScroll = 0, didScroll = false, activeBtn = null;
+
+  bar.addEventListener('pointerdown', e => {
+    startX = e.clientX;
+    startScroll = bar.scrollLeft;
+    didScroll = false;
+    activeBtn = e.target.closest('[data-fkey]');
+    if (activeBtn) {
+      // Visual feedback immediately on press
+      activeBtn.style.opacity = '0.6';
+    }
+  }, { passive: true });
+
+  bar.addEventListener('pointermove', e => {
+    const dx = Math.abs(e.clientX - startX);
+    if (dx > 8) {
+      didScroll = true;
+      // Scroll the bar
+      bar.scrollLeft = startScroll - (e.clientX - startX);
+      // Cancel visual feedback if we're scrolling
+      if (activeBtn) activeBtn.style.opacity = '';
+    }
+  }, { passive: true });
+
+  bar.addEventListener('pointerup', e => {
+    if (activeBtn) activeBtn.style.opacity = '';
+    if (!didScroll && activeBtn) {
+      const key = activeBtn.dataset.fkey;
+      if (key) {
+        fireKey(key, true);
+        setTimeout(() => fireKey(key, false), 80);
+      }
+    }
+    activeBtn = null;
+    didScroll = false;
+  }, { passive: true });
+
+  bar.addEventListener('pointercancel', () => {
+    if (activeBtn) activeBtn.style.opacity = '';
+    activeBtn = null;
+    didScroll = false;
+  }, { passive: true });
+})();
+
+// ── ZIP utils ────────────────────────────────────────────────
+const enc = s => new TextEncoder().encode(s);
+
+function crc32(d) {
+  let c=0xFFFFFFFF;
+  for(let i=0;i<d.length;i++){c^=d[i];for(let j=0;j<8;j++)c=(c>>>1)^(c&1?0xEDB88320:0);}
+  return(c^0xFFFFFFFF)>>>0;
+}
+function concat(arr) {
+  const o=new Uint8Array(arr.reduce((s,a)=>s+a.length,0));
+  let i=0; for(const a of arr){o.set(a,i);i+=a.length;} return o;
+}
+function mkLH(name,data,offset) {
+  const nb=enc(name),crc=crc32(data),lh=new Uint8Array(30+nb.length);
+  const v=new DataView(lh.buffer);
+  v.setUint32(0,0x04034b50,true);v.setUint16(4,20,true);
+  v.setUint32(14,crc,true);v.setUint32(18,data.length,true);v.setUint32(22,data.length,true);
+  v.setUint16(26,nb.length,true);lh.set(nb,30);
+  const cd=new Uint8Array(46+nb.length);const cv=new DataView(cd.buffer);
+  cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);
+  cv.setUint32(16,crc,true);cv.setUint32(20,data.length,true);cv.setUint32(24,data.length,true);
+  cv.setUint16(28,nb.length,true);cv.setUint32(42,offset,true);cd.set(nb,46);
+  return {lh,data,cd};
+}
+function buildZip(files) {
+  const entries=[],cds=[];let off=0;
+  for(const f of files){
+    const d=f.data instanceof Uint8Array?f.data:new Uint8Array(f.data);
+    const{lh,data,cd}=mkLH(f.name,d,off);
+    entries.push(lh,data);cds.push(cd);off+=lh.length+data.length;
+  }
+  const cdB=concat(cds),eocd=new Uint8Array(22),ev=new DataView(eocd.buffer);
+  ev.setUint32(0,0x06054b50,true);ev.setUint16(8,files.length,true);
+  ev.setUint16(10,files.length,true);ev.setUint32(12,cdB.length,true);ev.setUint32(16,off,true);
+  return concat([...entries,cdB,eocd]);
+}
+function appendToZip(zip,files) {
+  const v=new DataView(zip.buffer,zip.byteOffset,zip.byteLength);
+  let ei=-1;for(let i=zip.length-22;i>=0;i--)if(v.getUint32(i,true)===0x06054b50){ei=i;break;}
+  const cnt=v.getUint16(ei+8,true),csz=v.getUint32(ei+12,true),coff=v.getUint32(ei+16,true);
+  const lps=[],cdps=[];let ao=coff;
+  for(const f of files){
+    const d=f.data instanceof Uint8Array?f.data:new Uint8Array(f.data);
+    const{lh,data,cd}=mkLH(f.name,d,ao);
+    lps.push(lh,data);cdps.push(cd);ao+=lh.length+data.length;
+  }
+  const ecd=zip.subarray(coff,coff+csz),ncd=concat(cdps),ne=new Uint8Array(22),nv=new DataView(ne.buffer);
+  nv.setUint32(0,0x06054b50,true);nv.setUint16(8,cnt+files.length,true);
+  nv.setUint16(10,cnt+files.length,true);nv.setUint32(12,csz+ncd.length,true);nv.setUint32(16,ao,true);
+  return concat([zip.subarray(0,coff),...lps,ecd,ncd,ne]);
+}
+function toDos83(n){const c=n.replace(/\\/g,'/').split('/').pop().split('.')[0].replace(/[^A-Za-z0-9]/g,'').toUpperCase();return c.length<=8?c:c.slice(0,6)+'~1';}
+function pickExe(ns) {
+  const base = n => n.split('/').pop().toLowerCase();
+  // Always exclude: installers, DOSBox utilities, known non-launchers
+  const exclude = /setup|install|config|patch|update|uninst/i;
+  const utilNames = ['autoexec.bat','command.com','makepath.com','exists.com',
+                     'godir.com','space.com','what.exe','moniter.com','_pq.bat',
+                     'cwsdpmi.exe','winsetup.exe','removespeech.exe'];
+  const candidates = ns.filter(n => !exclude.test(n) && !utilNames.includes(base(n)));
+  const pool = candidates.length ? candidates : ns;
+  // Prefer known Sierra/game launcher names specifically
+  const preferred = ['sierra.com','sierra.exe','sciv.exe','start.exe','game.exe'];
+  for (const p of preferred) {
+    const found = pool.find(n => base(n) === p);
+    if (found) return found;
+  }
+  // Prefer .exe > .com > .bat
+  return pool.find(n => n.endsWith('.exe'))
+      || pool.find(n => n.endsWith('.com'))
+      || pool[0] || ns[0];
+}
+function dosConf(ae){return`[sdl]\nautolock=false\n[dosbox]\nmachine=svga_s3\nmemsize=16\n[cpu]\ncore=auto\ncputype=auto\ncycles=auto\n[render]\nframeskip=0\naspect=false\nscaler=none\n[sblaster]\nsbtype=sb16\nsbbase=220\nirq=7\ndma=1\nhdma=5\noplmode=auto\noplrate=44100\n[mixer]\nnosound=false\nrate=44100\n${ae}`;}
+
+async function ensureJsdosBundle(zip) {
+  // Parse central directory to get filenames
+  const v=new DataView(zip.buffer,zip.byteOffset,zip.byteLength);
+  let ei=-1;for(let i=zip.length-22;i>=0;i--)if(v.getUint32(i,true)===0x06054b50){ei=i;break;}
+  if(ei<0)throw new Error('Not a valid ZIP');
+  const cnt=v.getUint16(ei+8,true),coff=v.getUint32(ei+16,true);
+  const dec=new TextDecoder();
+  const names=[];let pos=coff;
+  for(let i=0;i<cnt;i++){
+    if(v.getUint32(pos,true)!==0x02014b50)break;
+    const nl=v.getUint16(pos+28,true),xl=v.getUint16(pos+30,true),cl=v.getUint16(pos+32,true);
+    names.push(dec.decode(zip.subarray(pos+46,pos+46+nl)));
+    pos+=46+nl+xl+cl;
+  }
+
+  // Already a valid jsdos bundle — pass through untouched
+  if(names.some(n=>n.toLowerCase()==='.jsdos/dosbox.conf'))return zip;
+
+  // Filter Mac/metadata junk — keep original case for paths
+  const clean=names.filter(n=>
+    !/^__macosx\//i.test(n) &&
+    !/(^|\/)\._[^/]+$/.test(n) &&
+    !n.toLowerCase().endsWith('.ds_store') &&
+    !n.toLowerCase().endsWith('.url') &&
+    !n.endsWith('/')
+  );
+
+  if(clean.length===0)throw new Error('No game files found in this ZIP — it may be a stub or wrapper with no actual game data.');
+
+  // Detect ScummVM games — incompatible with DOSBox
+  if(clean.some(n=>/\/scummvm(\.exe)?$/i.test(n))){
+    throw new Error('This game uses ScummVM and is not compatible with DOS/PLAY. Try finding a DOSBox-compatible version.');
+  }
+
+  // Find executables (original case preserved for path use)
+  const exes=clean.filter(n=>/\.(exe|com|bat)$/i.test(n));
+  const imgs=clean.filter(n=>/\.img$/i.test(n));
+  const picked=exes.length?pickExe(exes.map(n=>n.toLowerCase())):null;
+
+  // Get original-case path for the picked exe
+  const pickedOrig=picked?clean.find(n=>n.toLowerCase()===picked):null;
+
+  // Read existing dosbox.conf from ZIP root if present (e.g. KQ1PCJR)
+  let extraConf='';
+  const existingConf=names.find(n=>n.toLowerCase()==='dosbox.conf');
+  if(existingConf){
+    try{
+      // Extract dosbox.conf bytes from local header
+      const v2=new DataView(zip.buffer,zip.byteOffset,zip.byteLength);
+      let cpos=0;
+      for(let i=0;i<names.length;i++){
+        const sig=v2.getUint32(cpos,true);
+        if(sig!==0x04034b50)break;
+        const nl2=v2.getUint16(cpos+26,true),xl2=v2.getUint16(cpos+28,true);
+        const name2=new TextDecoder().decode(zip.subarray(cpos+30,cpos+30+nl2));
+        const dataStart=cpos+30+nl2+xl2;
+        const compSize=v2.getUint32(cpos+18,true);
+        if(name2.toLowerCase()==='dosbox.conf'){
+          const method=v2.getUint16(cpos+8,true);
+          if(method===0){
+            const text=new TextDecoder().decode(zip.subarray(zip.byteOffset+dataStart,zip.byteOffset+dataStart+compSize));
+            // Extract machine/cpu settings but not autoexec
+            const lines=text.split('\n').filter(l=>!/^\[autoexec\]/i.test(l)&&!l.trim().startsWith('@')&&!/^(mount|imgmount|c:|a:)/i.test(l.trim()));
+            extraConf=lines.join('\n');
+          }
+          break;
+        }
+        cpos=dataStart+compSize;
+      }
+    }catch(e){console.warn('Could not read dosbox.conf from ZIP',e);}
+  }
+
+  let ae='[autoexec]\n';
+  if(pickedOrig){
+    const parts=pickedOrig.split('/');
+    const exeName=parts[parts.length-1].toUpperCase();
+    if(parts.length===1){
+      ae+='mount c .\nc:\n'+exeName+'\n';
+    } else {
+      const gameDir=parts.slice(0,-1).join('/');
+      const qd=gameDir.includes(' ')?'"'+gameDir+'"':gameDir;
+      ae+='mount c '+qd+'\nc:\n'+exeName+'\n';
+    }
+  } else if(imgs.length>=1){
+    // One or more floppy/disk images — mount all with imgmount for multi-disk support
+    // For ZIPs with multiple disk sets, pick the set with fewest disks
+    const imgGroups={};
+    imgs.forEach(p=>{
+      const dir=p.includes('/')?p.split('/').slice(0,-1).join('/'):'.';
+      if(!imgGroups[dir])imgGroups[dir]=[];
+      imgGroups[dir].push(p);
+    });
+    // Pick the group with fewest images (prefer 3.5" 4-disk over 5.25" 9-disk etc.)
+    const bestGroup=Object.values(imgGroups).reduce((a,b)=>a.length<=b.length?a:b);
+    const sortedImgs=bestGroup.slice().sort();
+    // Use full ZIP-relative paths so DOSBox can find them from Z: root
+    // Quote paths that contain spaces, parentheses, or brackets
+    const qfull=p=>(p.includes(' ')||p.includes('(')||p.includes('[')?'"'+p+'"':p);
+    const imgArgs=sortedImgs.map(qfull).join(' ');
+    ae+='imgmount a '+imgArgs+' -t floppy\na:\n';
+  } else {
+    ae+='mount c .\nc:\n';
+  }
+
+  // Build final dosbox conf — merge existing conf settings if found, then our autoexec
+  let finalConf;
+  if(extraConf&&extraConf.trim()){
+    finalConf=extraConf.trim()+'\n'+ae;
+  } else {
+    finalConf=dosConf(ae);
+  }
+
+  return appendToZip(zip,[{name:'.jsdos/dosbox.conf',data:enc(finalConf)}]);
+}
+
+
+function buildBundleFromExe(d,n){return buildZip([{name:n,data:d},{name:'.jsdos/dosbox.conf',data:enc(dosConf(`[autoexec]\nmount c .\nc:\n${n.toUpperCase()}\n`))}]);}
+function buildBundleFromFloppy(d){return buildZip([{name:'floppy.img',data:d},{name:'.jsdos/dosbox.conf',data:enc(dosConf('[autoexec]\nimgmount a floppy.img -t floppy\na:\n'))}]);}
+</script>
+
+
+<!-- Load Modal -->
+<div id="load-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#161b27;border:1px solid #1e2433;border-radius:16px;width:100%;max-width:360px;max-height:70vh;display:flex;flex-direction:column;">
+    <div style="padding:14px 16px;border-bottom:1px solid #1e2433;display:flex;align-items:center;gap:8px;">
+      <span style="color:#e2e8f0;font-size:15px;font-weight:700;flex:1;">📂 Saves</span>
+      <button onpointerdown="importSaves()" style="padding:5px 10px;background:#1a2035;border:1px solid #2a3050;border-radius:8px;color:#e2e8f0;font-size:12px;cursor:pointer;touch-action:manipulation;">⬆ Import</button>
+      <button onpointerdown="exportSaves()" style="padding:5px 10px;background:#1a2035;border:1px solid #2a3050;border-radius:8px;color:#e2e8f0;font-size:12px;cursor:pointer;touch-action:manipulation;">⬇ Export All</button>
+      <button onclick="closeLoadModal()" style="background:none;border:none;color:#4a5568;font-size:20px;cursor:pointer;padding:0 0 0 4px;touch-action:manipulation;">✕</button>
+    </div>
+    <div style="padding:8px 14px;background:#0f1117;border-bottom:1px solid #1e2433;font-size:11px;color:#4a5568;">
+      ✅ Every save auto-downloads to Files/Downloads. Import after clearing browser data.
+    </div>
+    <div id="load-save-list" style="overflow-y:auto;flex:1;"></div>
+  </div>
+</div>
+</body>
+</html>
