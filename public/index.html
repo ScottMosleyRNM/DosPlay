@@ -166,12 +166,22 @@ body {
 .tab:active { background: #232d45; color: #e2e8f0; }
 #tab-v { margin-left: auto; }
 
+#menu-drawer {
+  display: none;
+  align-items: center;
+  padding: 6px 12px;
+  gap: 6px;
+  background: #0f1117;
+  border-bottom: 1px solid #1e2433;
+}
+#menu-drawer.open { display: flex; }
+
 /* D-pad */
 #dpad-wrap {
   height: 210px;
   display: flex;
   align-items: center;
-  padding: 10px 12px;
+  padding: 10px 12px 18px;
   gap: 10px;
   overflow: hidden;
 }
@@ -292,7 +302,7 @@ body {
 
   <div id="frow">
     <div id="fscroll">
-      <div class="fk" id="type-btn" onclick="toggleKB()">⌨ Type</div>
+      <div class="fk" id="type-btn" onclick="toggleTypeOrDpad()">⌨ Type</div>
       <div class="fk" data-fkey="Escape">ESC</div>
       <div class="fk" onpointerdown="kd(this,'F1',event)"  onpointerup="ku(this,'F1',event)">F1</div>
       <div class="fk" onpointerdown="kd(this,'F2',event)"  onpointerup="ku(this,'F2',event)">F2</div>
@@ -308,11 +318,14 @@ body {
   </div>
 
   <div id="tabs">
-    <div class="tab on" id="tab-d" onclick="toggleDpad()">D-PAD</div>
-    <div class="tab" onclick="saveState()">💾 Save Files</div>
-    <div class="tab" onclick="loadState()">📂 Restore</div>
-    <div class="tab" onclick="ejectGame()">⏏ Eject</div>
+    <div class="tab" id="tab-menu" onclick="toggleMenu()">☰ Menu</div>
     <div class="tab" id="tab-v" onclick="toggleDpad()">▾</div>
+  </div>
+
+  <div id="menu-drawer">
+    <div class="tab" onclick="toggleMenu();saveState()">💾 Save</div>
+    <div class="tab" onclick="toggleMenu();loadState()">📂 Restore</div>
+    <div class="tab" onclick="toggleMenu();ejectGame()">⏏ Eject</div>
   </div>
 
   <div id="dpad-wrap">
@@ -382,11 +395,35 @@ function toast(m)    {
 
 // ── Tab toggle ───────────────────────────────────────────────
 let dpadOpen = true;
+let menuOpen = false;
+
 function toggleDpad() {
   dpadOpen = !dpadOpen;
   document.getElementById('dpad-wrap').classList.toggle('hide', !dpadOpen);
-  document.getElementById('tab-d').classList.toggle('on', dpadOpen);
   document.getElementById('tab-v').textContent = dpadOpen ? '▾' : '▸';
+}
+
+function toggleMenu() {
+  menuOpen = !menuOpen;
+  document.getElementById('menu-drawer').classList.toggle('open', menuOpen);
+  document.getElementById('tab-menu').classList.toggle('on', menuOpen);
+}
+
+// Type button: when dpad is visible, show keyboard and hide dpad (label→"D-Pad")
+// When keyboard is open, close it and restore dpad (label→"Type")
+function toggleTypeOrDpad() {
+  const btn = document.getElementById('type-btn');
+  if (iosInp) {
+    // Keyboard is open — close it, restore dpad
+    iosInp.blur();
+    if (!dpadOpen) toggleDpad();
+    btn.textContent = '⌨ Type';
+  } else {
+    // Keyboard is closed — open it, hide dpad
+    toggleKB();
+    if (dpadOpen) toggleDpad();
+    btn.textContent = '🎮 D-Pad';
+  }
 }
 
 // ── Game load ────────────────────────────────────────────────
