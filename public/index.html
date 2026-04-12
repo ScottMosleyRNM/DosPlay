@@ -16,19 +16,17 @@
 body {
   background: #0f1117;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
   overflow: hidden;
 }
 
-/* GAME AREA: takes all space above controls */
+/* GAME AREA: fixed to top, always ends exactly where controls begin */
 #game-wrap {
-  flex: 1;
-  min-height: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 307px;
   background: #000;
-  position: relative;
 }
 #dos-root {
   width: 100%;
@@ -88,9 +86,12 @@ body {
 #err { color: #fc8181; font-size: 12px; text-align: center; display: none; }
 #err.show { display: block; }
 
-/* CONTROLS: fixed height at bottom */
+/* CONTROLS: fixed to bottom, never moves */
 #controls {
-  flex-shrink: 0;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   background: #0f1117;
   border-top: 1px solid #1e2433;
 }
