@@ -589,8 +589,9 @@ async function saveState() {
   if (saveTab) saveTab.textContent = '⏳';
   try {
     // Wait for DOSBox to flush pending disk writes before capturing filesystem
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const data = await ciInstance.persist(false);
+    // AGS/Sierra games can take several seconds to finish writing save files
+    await new Promise(resolve => setTimeout(resolve, 4000));
+    const data = await ciInstance.persist(true);  // true = full pack, not just diff
     if (!data) { toast('Nothing to save yet.'); return; }
     const gameName = currentGameName.replace(/\.[^.]+$/, '') || 'game';
     const key = 'save_game_' + gameName.toLowerCase().replace(/[^a-z0-9]/g, '_');
