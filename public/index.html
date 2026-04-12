@@ -164,11 +164,12 @@ body {
 }
 .tab.on { background: #1a2035; border-color: #1e2433; color: #e2e8f0; }
 .tab:active { background: #232d45; color: #e2e8f0; }
-#tab-v { margin-left: auto; }
 #tab-menu {
   border-color: #2a3050;
   color: #e2e8f0;
-  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 #tab-menu.on { background: #1a2035; border-color: #4a5568; }
 
@@ -325,7 +326,6 @@ body {
 
   <div id="tabs">
     <div class="tab" id="tab-menu" onclick="toggleMenu()">☰ Menu</div>
-    <div class="tab" id="tab-v" onclick="toggleDpad()">▾</div>
   </div>
 
   <div id="menu-drawer">
@@ -406,7 +406,6 @@ let menuOpen = false;
 function toggleDpad() {
   dpadOpen = !dpadOpen;
   document.getElementById('dpad-wrap').classList.toggle('hide', !dpadOpen);
-  document.getElementById('tab-v').textContent = dpadOpen ? '▾' : '▸';
 }
 
 function toggleMenu() {
