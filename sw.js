@@ -1,4 +1,4 @@
-const CACHE = 'dosplay-v1';
+const CACHE = 'dosplay-1.0.67';
 
 // All assets needed to run offline
 const PRECACHE = [

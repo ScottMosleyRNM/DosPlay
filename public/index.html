@@ -305,6 +305,7 @@ body {
     <p>Tap the button to load a game<br>.zip folder · .img disk · .exe file</p>
     <div id="launch-btn" onclick="document.getElementById('file-input').click()">⬆ Load Game</div>
     <div id="err"></div>
+    <div id="app-version" style="color:#2a3050;font-size:11px;margin-top:8px;">v1.0.67</div>
   </div>
 </div>
 
@@ -375,8 +376,24 @@ body {
 })();
 
 // ── SW (no auto-reload) ──────────────────────────────────────
-if ('serviceWorker' in navigator)
-  navigator.serviceWorker.register('/DosPlay/sw.js').catch(()=>{});
+const APP_VERSION = '1.0.67';
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/DosPlay/sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          // New version available — show a non-intrusive toast
+          setTimeout(() => toast('🆕 Update ready — close & reopen app for latest version'), 2000);
+        }
+      });
+    });
+  }).catch(()=>{});
+  // Detect when new SW takes control
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    document.getElementById('app-version') && (document.getElementById('app-version').style.color = '#48bb78');
+  });
+}
 
 // ── File input ───────────────────────────────────────────────
 document.getElementById('file-input').addEventListener('change', e => {
