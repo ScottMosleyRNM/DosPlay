@@ -579,15 +579,6 @@ async function saveState() {
     const key = 'save_game_' + gameName.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const meta = { name: gameName, date: new Date().toLocaleString(), game: currentGameName };
     await dbPut(key, { data, meta });
-    const exportObj = [{ key, meta, data: toBase64(data) }];
-    const blob = new Blob([JSON.stringify({ version: 1, saves: exportObj })], { type: 'application/json' });
-    const safeName = gameName.replace(/[^a-z0-9_\-\s]/gi, '_').trim() || 'save';
-    const a = Object.assign(document.createElement('a'), {
-      href: URL.createObjectURL(blob),
-      download: safeName + '.dosplay'
-    });
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     toast('💾 Saved — ' + gameName);
   } catch(e) { toast('Save failed: ' + (e.message||e)); console.error(e); }
   finally { if (saveTab) saveTab.textContent = '💾 Save Files'; }
