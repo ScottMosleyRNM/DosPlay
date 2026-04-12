@@ -305,7 +305,6 @@ body {
     <p>Tap the button to load a game<br>.zip folder · .img disk · .exe file</p>
     <div id="launch-btn" onclick="document.getElementById('file-input').click()">⬆ Load Game</div>
     <div id="err"></div>
-    <div id="app-version" style="color:#2a3050;font-size:11px;margin-top:8px;">v1.0.67</div>
   </div>
 </div>
 
@@ -331,6 +330,7 @@ body {
 
   <div id="tabs">
     <div class="tab" id="tab-menu" onclick="toggleMenu()">☰ Menu</div>
+    <div id="app-version" style="margin-left:auto;color:#2a3050;font-size:11px;padding-right:4px;align-self:center;">v1.0.67</div>
     <div class="tab menu-item" onclick="toggleMenu();saveState()">💾 Save</div>
     <div class="tab menu-item" onclick="toggleMenu();loadState()">📂 Restore</div>
     <div class="tab menu-item" onclick="toggleMenu();ejectGame()">⏏ Eject</div>
