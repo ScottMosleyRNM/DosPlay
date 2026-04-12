@@ -571,6 +571,8 @@ async function saveState() {
   const saveTab = document.querySelector('.tab[onclick="saveState()"]');
   if (saveTab) saveTab.textContent = '⏳';
   try {
+    // Wait for DOSBox to flush pending disk writes before capturing filesystem
+    await new Promise(resolve => setTimeout(resolve, 1500));
     const data = await ciInstance.persist(false);
     if (!data) { toast('Nothing to save yet.'); return; }
     const gameName = currentGameName.replace(/\.[^.]+$/, '') || 'game';
