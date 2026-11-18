@@ -104,6 +104,17 @@ body:not(.playing) #controls { display: none; }
 #tab-saves { border-color: #2a3050; color: #e2e8f0; }
 #app-version.busy { color: #68d391; }
 
+/* Portrait: the area under the F-key row is exactly the iPhone keyboard's height (--kbh, measured the
+   first time Type is used), so the F-keys and the game stay put when switching D-Pad ⇄ Type */
+:root { --kbh: 300px; }
+body.playing #game-wrap { bottom: calc(52px + var(--kbh)); }
+#controls { height: calc(52px + var(--kbh)); display: flex; flex-direction: column; }
+#frow, #tabs { flex-shrink: 0; }
+#dpad-wrap { flex: 1; min-height: 0; height: auto; align-items: stretch; padding: 10px 12px max(12px, env(safe-area-inset-bottom)); }
+#action-col .ab { flex: 1; height: auto; max-height: 72px; min-height: 40px; }
+#action-col { justify-content: center; }
+#toast { bottom: calc(64px + var(--kbh)); }
+
 /* Bottom sheets & dialogs */
 .scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 900; display: none; align-items: flex-end; justify-content: center; }
 .scrim.show { display: flex; }
@@ -143,7 +154,7 @@ body:not(.playing) #controls { display: none; }
   body.playing #game-wrap { top: 0; bottom: 46px; left: calc(196px + env(safe-area-inset-left)); right: calc(92px + env(safe-area-inset-right)); }
   body.playing #dos-root > div { align-items: center !important; }
   body.playing #dos-root canvas { width: auto !important; height: 100% !important; max-width: 100%; margin: 0 auto; }
-  #controls { top: 0; background: transparent; border-top: none; pointer-events: none; }
+  #controls { height: auto; top: 0; background: transparent; border-top: none; pointer-events: none; }
   #controls > * { pointer-events: auto; }
   #frow { position: fixed; left: calc(196px + env(safe-area-inset-left)); right: calc(92px + env(safe-area-inset-right)); bottom: 0; height: 46px; border-bottom: none; border-top: 1px solid #1e2433; background: #0f1117; }
   #fscroll { padding: 0 8px; }
@@ -151,7 +162,7 @@ body:not(.playing) #controls { display: none; }
   #app-version { display: none; }
   #dpad-wrap { position: fixed; left: 0; bottom: 0; top: 88px; width: calc(196px + env(safe-area-inset-left)); height: auto; padding: 4px 8px 10px calc(8px + env(safe-area-inset-left)); background: #0f1117; }
   #action-col { position: fixed; top: 0; bottom: 0; right: 0; width: calc(92px + env(safe-area-inset-right)); justify-content: center; padding: 8px calc(8px + env(safe-area-inset-right)) 8px 8px; background: #0f1117; }
-  .ab { height: 52px; }
+  .ab, #action-col .ab { height: 52px; flex: none; }
   #toast { bottom: 60px; }
 }
 </style>
@@ -177,6 +188,7 @@ body:not(.playing) #controls { display: none; }
     <div id="backup2" style="display:flex;gap:8px;justify-content:center;margin-bottom:6px">
       <div class="sbtn ghost" id="log-btn">Diagnostics</div>
       <div class="sbtn ghost" id="storage-info"></div>
+      <div class="sbtn ghost" id="lib-version"></div>
     </div>
   </div>
 </div>
@@ -259,9 +271,9 @@ body:not(.playing) #controls { display: none; }
 <script>
 (() => { // own scope: js-dos.js declares many short global names ($, ci, p, …)
 'use strict';
-const APP_VERSION = '2.1.1';
+const APP_VERSION = '2.2.0';
 const $ = id => document.getElementById(id);
-$('app-version').textContent = 'v' + APP_VERSION;
+$('app-version').textContent = $('lib-version').textContent = 'v' + APP_VERSION;
 function setStatus(s) { const v = $('app-version'); v.textContent = s || 'v' + APP_VERSION; v.classList.toggle('busy', !!s); }
 
 // ═════════════════════════════════════════════════════════════
@@ -1208,12 +1220,20 @@ function openKB() {
   document.body.appendChild(i); kbInput = i; i.focus();
   $('type-btn').textContent = '🎮 D-Pad'; setDpadVisible(false);
 }
-// While the game keyboard is open, float the F-key row just above it
+// The area under the F-key row matches the on-screen keyboard's height (portrait), so the F-keys sit
+// right on top of the keyboard and don't move when switching D-Pad ⇄ Type. Measured once, remembered.
+const portrait = () => window.innerHeight > window.innerWidth;
+function setKbh(px) { document.documentElement.style.setProperty('--kbh', Math.round(px) + 'px'); }
+(() => {
+  let h = 0; try { h = +localStorage.getItem('dp.kbh') || 0; } catch (e) {}
+  // First run guess ≈ iPhone keyboard + its toolbar; corrected the first time Type is used
+  setKbh(h || Math.min(400, Math.max(270, window.innerHeight * 0.4)));
+})();
 function positionFrow() {
-  const f = $('frow'), vv = window.visualViewport; if (!vv) return;
-  const kb = window.innerHeight - vv.height;
-  if (kbInput && kb > 80) Object.assign(f.style, { position: 'fixed', bottom: kb + 'px', left: '0', right: '0', zIndex: '500', background: '#0f1117', borderTop: '1px solid #1e2433' });
-  else f.removeAttribute('style');
+  const vv = window.visualViewport; if (!vv || !kbInput || !portrait()) return;
+  const kb = window.innerHeight - vv.height - vv.offsetTop;
+  if (kb < 200) return; // hardware keyboard bar / keyboard still animating
+  setKbh(kb); try { localStorage.setItem('dp.kbh', String(Math.round(kb))); } catch (e) {}
 }
 if (window.visualViewport) { visualViewport.addEventListener('resize', positionFrow); visualViewport.addEventListener('scroll', positionFrow); }
 
