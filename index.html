@@ -271,7 +271,7 @@ body.playing #game-wrap { bottom: calc(52px + var(--kbh)); }
 <script>
 (() => { // own scope: js-dos.js declares many short global names ($, ci, p, …)
 'use strict';
-const APP_VERSION = '2.2.1';
+const APP_VERSION = '2.2.2';
 const $ = id => document.getElementById(id);
 $('app-version').textContent = $('lib-version').textContent = 'v' + APP_VERSION;
 function setStatus(s) { const v = $('app-version'); v.textContent = s || 'v' + APP_VERSION; v.classList.toggle('busy', !!s); }
