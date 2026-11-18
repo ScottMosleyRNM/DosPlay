@@ -1,7 +1,7 @@
 // DOS/PLAY service worker — offline support
 // Page: network-first (so updates arrive), falls back to cache offline.
 // Engine/assets: cache-first (large, versioned by CACHE name).
-const CACHE = 'dosplay-2.2.5';
+const CACHE = 'dosplay-2.2.6';
 const PRECACHE = [
   '/DosPlay/',
   '/DosPlay/index.html',

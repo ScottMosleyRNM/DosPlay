@@ -188,6 +188,7 @@ body.playing #game-wrap { bottom: calc(52px + var(--kbh)); }
     <div id="backup2" style="display:flex;gap:8px;justify-content:center;margin-bottom:6px">
       <div class="sbtn ghost" id="log-btn">Diagnostics</div>
       <div class="sbtn ghost" id="storage-info"></div>
+      <div class="sbtn ghost" id="sound-btn"></div>
       <div class="sbtn ghost" id="lib-version"></div>
     </div>
   </div>
@@ -269,7 +270,7 @@ body.playing #game-wrap { bottom: calc(52px + var(--kbh)); }
 <script>
 (() => { // own scope: js-dos.js declares many short global names ($, ci, p, …)
 'use strict';
-const APP_VERSION = '2.2.5';
+const APP_VERSION = '2.2.6';
 const $ = id => document.getElementById(id);
 $('app-version').textContent = $('lib-version').textContent = 'v' + APP_VERSION;
 function setStatus(s) { const v = $('app-version'); v.textContent = s || 'v' + APP_VERSION; v.classList.toggle('busy', !!s); }
@@ -674,6 +675,7 @@ async function launch(id, stateId) {
     let bundle = await dbGet('bundles', id);
     if (!bundle) throw new Error('Game file is missing — remove it and add it again');
     bundleUrl = URL.createObjectURL(new Blob([bundle], { type: 'application/zip' }));
+    window.DP_NOSOUND = soundOff(); // js-dos then never creates Safari's audio node
     bundle = null; // the Blob has its own copy
     const ready = new Promise((resolve, reject) => {
       const to = setTimeout(() => reject(new Error('Emulator did not start')), 60000);
@@ -685,6 +687,7 @@ async function launch(id, stateId) {
         onEvent: (ev, ci) => {
           if (ev !== 'ci-ready') return;
           clearTimeout(to); CI = ci; bootAt = Date.now();
+          if (soundOff()) try { ci.sendBackendEvent({ type: 'dp-nosound' }); } catch (e) {} // emulator stops streaming sound
           try { ci.events().onFrame(() => { frames++; }); } catch (e) {}
           if (POLL_EMU) try { ci.events().onMessage((type, ...a) => { if (type === 'error') logEvt('emu', a.join(' ')); }); } catch (e) {}
           try { ci.events().onExit(() => { if (CI === ci) emuTrouble('The emulator shut down unexpectedly.'); }); } catch (e) {}
@@ -696,7 +699,7 @@ async function launch(id, stateId) {
     URL.revokeObjectURL(bundleUrl); bundleUrl = null; // bundle is loaded; don't keep a second copy alive
     current = { id, name: game.name };
     setSession({ gameId: id, name: game.name, startedAt: Date.now(), hiddenAt: 0 });
-    logEvt('info', 'Started ' + game.name + (meta ? ' from “' + meta.label + '”' : ''));
+    logEvt('info', 'Started ' + game.name + (meta ? ' from “' + meta.label + '”' : '') + (soundOff() ? ' (sound off)' : ''));
     $('tabs').classList.toggle('multidisk', (game.disks || 1) > 1);
     tx('games', 'readwrite', st => { game.lastPlayed = Date.now(); st.put(game, id); }).catch(() => {});
 
@@ -1043,6 +1046,14 @@ function logText() {
   const head = 'DOS/PLAY v' + APP_VERSION + ' · ' + navigator.userAgent + '\n\n';
   return head + (log.length ? log.slice().reverse().map(l => new Date(l.t).toLocaleString() + ' [' + l.level + ']' + (l.game ? ' ' + l.game + ':' : '') + ' ' + l.msg).join('\n') : 'Nothing logged yet.');
 }
+// Sound on/off (crash hunt: tests whether the audio stream is what fills memory)
+function soundOff() { try { return localStorage.getItem('dp.nosound') === '1'; } catch (e) { return false; } }
+function showSoundBtn() { $('sound-btn').textContent = soundOff() ? '🔇 Sound off' : '🔊 Sound on'; }
+showSoundBtn();
+$('sound-btn').onclick = () => {
+  try { localStorage.setItem('dp.nosound', soundOff() ? '0' : '1'); } catch (e) {}
+  showSoundBtn(); toast(soundOff() ? 'Sound off for games you start' : 'Sound on for games you start');
+};
 $('log-btn').onclick = () => { $('log-text').textContent = logText(); $('log-scrim').classList.add('show'); };
 $('log-close').onclick = closeSheets;
 $('log-scrim').onclick = e => { if (e.target === $('log-scrim')) closeSheets(); };
