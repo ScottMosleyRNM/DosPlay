@@ -89,6 +89,71 @@ body { background: #0f1117; font-family: -apple-system, BlinkMacSystemFont, sans
 #toast { position: fixed; bottom: 320px; left: 50%; transform: translateX(-50%) translateY(8px); background: #1a2035; border: 1px solid #2a3050; color: #e2e8f0; font-size: 13px; padding: 7px 18px; border-radius: 20px; opacity: 0; pointer-events: none; z-index: 1000; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; transition: opacity 0.2s, transform 0.2s; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 #toast.bad { border-color: #9b2c2c; }
+#toast.act { pointer-events: auto; cursor: pointer; }
+#toast.act::after { content: ' ›'; color: #68d391; }
+
+/* Library screen fills the whole screen; controls only exist while a game runs */
+body:not(.playing) #game-wrap { bottom: 0; }
+body:not(.playing) #controls { display: none; }
+
+/* Save + Saves are always one tap away; the rest lives behind Menu */
+#tabs { overflow-x: auto; scrollbar-width: none; }
+#tabs::-webkit-scrollbar { display: none; }
+.tab { flex-shrink: 0; }
+#tab-save { border-color: #2f6b4a; background: #1f3a2c; color: #e2e8f0; }
+#tab-saves { border-color: #2a3050; color: #e2e8f0; }
+#app-version.busy { color: #68d391; }
+
+/* Bottom sheets & dialogs */
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 900; display: none; align-items: flex-end; justify-content: center; }
+.scrim.show { display: flex; }
+.scrim.center { align-items: center; z-index: 1100; }
+.sheet { width: 100%; max-width: 520px; max-height: 85%; background: #141925; border: 1px solid #2a3050; border-bottom: none; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom); }
+.sheet-head { display: flex; align-items: center; gap: 8px; padding: 14px 12px 10px 16px; border-bottom: 1px solid #1e2433; }
+.sheet-head h4 { flex: 1; min-width: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 12px 12px; }
+.sheet-foot { display: flex; align-items: center; gap: 8px; padding: 10px 16px 12px; border-top: 1px solid #1e2433; font-size: 12px; color: #718096; flex-wrap: wrap; }
+.sheet-foot .grow { flex: 1; }
+.sheet select { height: 30px; background: #1a2035; color: #e2e8f0; border: 1px solid #2a3050; border-radius: 8px; font-size: 13px; padding: 0 6px; }
+.empty { color: #4a5568; font-size: 13px; text-align: center; padding: 24px 8px; line-height: 1.5; }
+.state { display: flex; align-items: center; gap: 10px; padding: 8px; background: #0f1117; border: 1px solid #1e2433; border-radius: 12px; margin-bottom: 8px; }
+.state.latest { border-color: #2f6b4a; }
+.thumb { width: 72px; height: 54px; flex-shrink: 0; border-radius: 6px; background: #000 center / cover no-repeat; image-rendering: pixelated; display: flex; align-items: center; justify-content: center; color: #2a3050; font-size: 20px; }
+.state .info, .game .info { flex: 1; min-width: 0; }
+.state .name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.state .sub { font-size: 11px; color: #718096; margin-top: 3px; }
+.badge { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 1px; padding: 2px 5px; border-radius: 4px; background: #232d45; color: #a0aec0; margin-right: 5px; vertical-align: 1px; }
+.badge.auto { background: #2a2414; color: #d6b36a; }
+.state .acts { display: flex; gap: 6px; flex-shrink: 0; }
+.ibtn { width: 32px; padding: 0; justify-content: center; }
+.sbtn.danger { background: #3a1f22; border-color: #6b2f35; }
+.game .thumb { width: 56px; height: 42px; font-size: 16px; }
+.game .tap { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; cursor: pointer; }
+.dialog { width: calc(100% - 32px); max-width: 360px; background: #141925; border: 1px solid #2a3050; border-radius: 14px; padding: 18px 16px 14px; }
+.dialog h4 { font-size: 16px; margin-bottom: 6px; }
+.dialog p { font-size: 13px; color: #a0aec0; line-height: 1.45; white-space: pre-line; }
+.dialog input { width: 100%; height: 42px; margin-top: 12px; font-size: 16px; background: #0f1117; border: 1px solid #2a3050; border-radius: 8px; color: #e2e8f0; padding: 0 10px; -webkit-user-select: text; user-select: text; }
+.dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+.notice { width: 100%; max-width: 420px; background: #241c10; border: 1px solid #6b4a2f; border-radius: 12px; padding: 12px; font-size: 13px; line-height: 1.45; color: #f6e0c0; margin-bottom: 12px; }
+.notice .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+#log-text { font: 11px/1.45 ui-monospace, Menlo, monospace; color: #a0aec0; white-space: pre-wrap; word-break: break-word; -webkit-user-select: text; user-select: text; }
+
+/* Landscape phone: game in the middle, D-pad left, action keys right, F-keys under the game */
+@media (orientation: landscape) and (max-height: 560px) {
+  body.playing #game-wrap { top: 0; bottom: 46px; left: calc(196px + env(safe-area-inset-left)); right: calc(92px + env(safe-area-inset-right)); }
+  body.playing #dos-root > div { align-items: center !important; }
+  body.playing #dos-root canvas { width: auto !important; height: 100% !important; max-width: 100%; margin: 0 auto; }
+  #controls { top: 0; background: transparent; border-top: none; pointer-events: none; }
+  #controls > * { pointer-events: auto; }
+  #frow { position: fixed; left: calc(196px + env(safe-area-inset-left)); right: calc(92px + env(safe-area-inset-right)); bottom: 0; height: 46px; border-bottom: none; border-top: 1px solid #1e2433; background: #0f1117; }
+  #fscroll { padding: 0 8px; }
+  #tabs { position: fixed; top: 0; left: 0; width: calc(196px + env(safe-area-inset-left)); height: auto; flex-wrap: wrap; padding: 8px 8px 8px calc(8px + env(safe-area-inset-left)); border-bottom: none; overflow: visible; background: #0f1117; }
+  #app-version { display: none; }
+  #dpad-wrap { position: fixed; left: 0; bottom: 0; top: 88px; width: calc(196px + env(safe-area-inset-left)); height: auto; padding: 4px 8px 10px calc(8px + env(safe-area-inset-left)); background: #0f1117; }
+  #action-col { position: fixed; top: 0; bottom: 0; right: 0; width: calc(92px + env(safe-area-inset-right)); justify-content: center; padding: 8px calc(8px + env(safe-area-inset-right)) 8px 8px; background: #0f1117; }
+  .ab { height: 52px; }
+  #toast { bottom: 60px; }
+}
 </style>
 </head>
 <body>
@@ -103,10 +168,15 @@ body { background: #0f1117; font-family: -apple-system, BlinkMacSystemFont, sans
       <div class="btn" id="launch-btn">⬆ Load Game</div>
       <div id="err"></div>
     </div>
+    <div id="notice-slot"></div>
     <div id="library"></div>
     <div id="backup">
       <div class="sbtn" id="export-btn">⬇ Back up saves</div>
       <div class="sbtn" id="import-btn">⬆ Restore backup</div>
+    </div>
+    <div id="backup2" style="display:flex;gap:8px;justify-content:center;margin-bottom:6px">
+      <div class="sbtn ghost" id="log-btn">Diagnostics</div>
+      <div class="sbtn ghost" id="storage-info"></div>
     </div>
   </div>
 </div>
@@ -131,8 +201,8 @@ body { background: #0f1117; font-family: -apple-system, BlinkMacSystemFont, sans
 
   <div id="tabs">
     <div class="tab" id="tab-menu">☰ Menu</div>
-    <div class="tab menu-item" data-action="save">💾 Save</div>
-    <div class="tab menu-item" data-action="restore">↩ Restore</div>
+    <div class="tab" id="tab-save" data-action="save">💾 Save</div>
+    <div class="tab" id="tab-saves" data-action="saves">📂 Saves</div>
     <div class="tab menu-item disk-item" data-action="disk">💽 Next disk</div>
     <div class="tab menu-item" data-action="eject">⏏ Eject</div>
     <div id="app-version"></div>
@@ -164,21 +234,82 @@ body { background: #0f1117; font-family: -apple-system, BlinkMacSystemFont, sans
 <div id="loading"><div class="spin"></div><div id="ltxt">LOADING</div></div>
 <div id="toast"></div>
 
+<!-- Saves list (in game and from the library) -->
+<div class="scrim" id="saves-scrim">
+  <div class="sheet">
+    <div class="sheet-head"><h4 id="saves-title">Saves</h4><div class="sbtn primary" id="saves-new">＋ New save</div><div class="sbtn ghost ibtn" id="saves-close">✕</div></div>
+    <div class="sheet-body" id="saves-list"></div>
+    <div class="sheet-foot"><span>Autosave</span>
+      <select id="autosave-sel"><option value="0">Off</option><option value="2">every 2 min</option><option value="5">every 5 min</option><option value="10">every 10 min</option><option value="15">every 15 min</option></select>
+      <span class="grow"></span><span id="saves-count"></span></div>
+  </div>
+</div>
+<!-- Diagnostics log -->
+<div class="scrim" id="log-scrim">
+  <div class="sheet">
+    <div class="sheet-head"><h4>Diagnostics</h4><div class="sbtn" id="log-copy">Copy</div><div class="sbtn ghost" id="log-clear">Clear</div><div class="sbtn ghost ibtn" id="log-close">✕</div></div>
+    <div class="sheet-body"><div id="log-text"></div></div>
+  </div>
+</div>
+<!-- Generic dialog (confirm / text input) -->
+<div class="scrim center" id="dlg-scrim">
+  <div class="dialog"><h4 id="dlg-title"></h4><p id="dlg-msg"></p><input id="dlg-input" type="text" maxlength="60" autocomplete="off" autocorrect="off" spellcheck="false"><div class="row" id="dlg-row"></div></div>
+</div>
+
 <script>
 (() => { // own scope: js-dos.js declares many short global names ($, ci, p, …)
 'use strict';
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.1.0';
 const $ = id => document.getElementById(id);
 $('app-version').textContent = 'v' + APP_VERSION;
+function setStatus(s) { const v = $('app-version'); v.textContent = s || 'v' + APP_VERSION; v.classList.toggle('busy', !!s); }
+
+// ═════════════════════════════════════════════════════════════
+// Diagnostics log — survives crashes and reloads (localStorage)
+// ═════════════════════════════════════════════════════════════
+const LOG_KEY = 'dp.log', SESSION_KEY = 'dp.session';
+function logEvt(level, msg) {
+  try {
+    const log = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+    const mem = performance.memory ? ' heap=' + Math.round(performance.memory.usedJSHeapSize / 1048576) + 'MB' : '';
+    log.push({ t: Date.now(), level, msg: String(msg).slice(0, 400) + mem, game: current ? current.name : '' });
+    localStorage.setItem(LOG_KEY, JSON.stringify(log.slice(-120)));
+  } catch (e) {}
+}
+window.addEventListener('error', e => logEvt('error', (e.message || 'Script error') + (e.filename ? ' @' + e.filename.split('/').pop() + ':' + e.lineno : '')));
+window.addEventListener('unhandledrejection', e => logEvt('error', 'Unhandled: ' + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason)));
+(() => { const ce = console.error.bind(console); console.error = (...a) => { logEvt('error', a.map(x => x && x.message ? x.message : typeof x === 'object' ? (() => { try { return JSON.stringify(x); } catch (_) { return String(x); } })() : String(x)).join(' ')); ce(...a); }; })();
 
 // ═════════════════════════════════════════════════════════════
 // UI helpers
 // ═════════════════════════════════════════════════════════════
-let toastTmr;
-function toast(m, bad) {
-  const t = $('toast'); t.textContent = m; t.classList.toggle('bad', !!bad); t.classList.add('show');
-  clearTimeout(toastTmr); toastTmr = setTimeout(() => t.classList.remove('show'), bad ? 4500 : 2500);
+let toastTmr, toastAct = null;
+function toast(m, bad, action) {
+  const t = $('toast'); t.textContent = m; t.classList.toggle('bad', !!bad); t.classList.toggle('act', !!action); t.classList.add('show');
+  toastAct = action || null;
+  clearTimeout(toastTmr); toastTmr = setTimeout(() => { t.classList.remove('show', 'act'); toastAct = null; }, bad ? 4500 : action ? 4000 : 2500);
 }
+$('toast').onclick = () => { const a = toastAct; $('toast').classList.remove('show', 'act'); toastAct = null; if (a) a(); };
+
+// Dialog: dialog({ title, msg, input?: default text, buttons: [{ label, value, cls }] }) → value (or null on cancel)
+function dialog({ title, msg = '', input = null, buttons }) {
+  return new Promise(resolve => {
+    $('dlg-title').textContent = title; $('dlg-msg').textContent = msg; $('dlg-msg').style.display = msg ? '' : 'none';
+    const inp = $('dlg-input'); inp.style.display = input === null ? 'none' : ''; inp.value = input || '';
+    const row = $('dlg-row'); row.innerHTML = '';
+    const done = v => { $('dlg-scrim').classList.remove('show'); inp.onkeydown = null; resolve(v); };
+    for (const b of buttons) {
+      const el = document.createElement('div'); el.className = 'sbtn ' + (b.cls || ''); el.textContent = b.label;
+      el.onclick = () => done(b.value === undefined ? null : b.value === '$input' ? inp.value.trim() : b.value);
+      row.appendChild(el);
+    }
+    inp.onkeydown = e => { if (e.key === 'Enter') { const ok = buttons.find(b => b.value === '$input'); if (ok) done(inp.value.trim()); } };
+    $('dlg-scrim').classList.add('show');
+    if (input !== null) setTimeout(() => { inp.focus(); inp.select(); }, 50);
+  });
+}
+const confirmDlg = (title, msg, okLabel = 'OK', danger) => dialog({ title, msg, buttons: [{ label: 'Cancel' }, { label: okLabel, value: true, cls: danger ? 'danger' : 'primary' }] });
+const askText = (title, def, okLabel = 'Save') => dialog({ title, input: def, buttons: [{ label: 'Cancel' }, { label: okLabel, value: '$input', cls: 'primary' }] });
 function showLoad(t) { $('ltxt').textContent = t; $('loading').classList.add('show'); }
 function hideLoad()  { $('loading').classList.remove('show'); }
 function showErr(m)  { $('err').textContent = m; $('err').classList.add('show'); }
@@ -195,22 +326,37 @@ function fmtWhen(ts) {
   return d.toDateString() === now.toDateString() ? 'today ' + time : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + time;
 }
 function fmtSize(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+function fmtAgo(ts) {
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.round(s / 60) + ' min ago';
+  return fmtWhen(ts);
+}
 
 // Prevent double-tap zoom on iOS
 (() => { let last = 0; document.addEventListener('touchend', e => { const n = Date.now(); if (n - last < 350) e.preventDefault(); last = n; }, { passive: false }); })();
 
 // ═════════════════════════════════════════════════════════════
-// Storage (IndexedDB "dosplay2")
-//   games: id → { id, name, bundle, size, addedAt, lastPlayed }
-//   saves: gameId → { gameId, gameName, changes, savSize, createdAt }
-//   prev:  gameId → previous good save (automatic backup)
+// Storage (IndexedDB "dosplay2", schema v2)
+//   games:     id → { id, name, bundle, disks, size, addedAt, lastPlayed }
+//   states:    autoId → { id, gameId, gameName, label, kind: 'manual'|'auto', savSize, size, createdAt, thumb }
+//   stateData: state id → Uint8Array (ZIP of changed files, incl. save/1.sav)
+//   saves/prev: v2.0 single-slot saves — copied into states once, then left untouched
+// Metadata and data are split so listing saves never loads every snapshot into memory.
 // ═════════════════════════════════════════════════════════════
+const AUTO_KEEP = 5; // autosaves kept per game (manual saves are never auto-deleted)
 let dbp = null;
 function db() {
   if (!dbp) dbp = new Promise((res, rej) => {
-    const r = indexedDB.open('dosplay2', 1);
-    r.onupgradeneeded = () => { const d = r.result; ['games', 'saves', 'prev'].forEach(s => d.objectStoreNames.contains(s) || d.createObjectStore(s)); };
-    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    const r = indexedDB.open('dosplay2', 2);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      ['games', 'saves', 'prev', 'stateData'].forEach(s => d.objectStoreNames.contains(s) || d.createObjectStore(s));
+      if (!d.objectStoreNames.contains('states')) d.createObjectStore('states', { keyPath: 'id', autoIncrement: true }).createIndex('gameId', 'gameId');
+    };
+    r.onblocked = () => toast('Close other DOS/PLAY tabs to finish updating', true);
+    r.onsuccess = () => { const d = r.result; d.onversionchange = () => { d.close(); location.reload(); }; res(d); };
+    r.onerror = () => rej(r.error);
   });
   return dbp;
 }
@@ -226,13 +372,49 @@ const req = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); 
 const dbGet = (s, k) => tx(s, 'readonly', st => req(st.get(k)));
 const dbAll = s => tx(s, 'readonly', st => req(st.getAll()));
 const dbPut = (s, k, v) => tx(s, 'readwrite', st => { st.put(v, k); });
-// Commit a new save atomically: current → prev, new → current
 // (callback style on purpose: awaiting inside an IDB transaction is unsafe on older iOS)
-const commitSave = rec => tx(['saves', 'prev'], 'readwrite', (saves, prev) => {
-  const r = saves.get(rec.gameId);
-  r.onsuccess = () => { if (r.result) prev.put(r.result, rec.gameId); saves.put(rec, rec.gameId); };
+const byNewest = a => a.sort((x, y) => y.createdAt - x.createdAt);
+const statesOf = gameId => tx('states', 'readonly', st => req(st.index('gameId').getAll(gameId))).then(byNewest);
+const stateData = id => dbGet('stateData', id);
+// Add a snapshot (metadata + data in one transaction). Old autosaves for that game rotate out.
+function addState(meta, data) {
+  return tx(['states', 'stateData'], 'readwrite', (st, sd) => new Promise((res, rej) => {
+    const r = st.add(meta);
+    r.onerror = () => rej(r.error);
+    r.onsuccess = () => {
+      const id = r.result; sd.put(data, id);
+      if (meta.kind === 'auto') {
+        const q = st.index('gameId').getAll(meta.gameId);
+        q.onsuccess = () => byNewest(q.result.filter(s => s.kind === 'auto')).slice(AUTO_KEEP).forEach(s => { st.delete(s.id); sd.delete(s.id); });
+      }
+      res(id);
+    };
+  }));
+}
+const updateState = (id, patch) => tx('states', 'readwrite', st => { const r = st.get(id); r.onsuccess = () => { if (r.result) st.put(Object.assign(r.result, patch)); }; });
+const deleteState = id => tx(['states', 'stateData'], 'readwrite', (st, sd) => { st.delete(id); sd.delete(id); });
+const deleteGame = gameId => tx(['games', 'states', 'stateData', 'saves', 'prev'], 'readwrite', (g, st, sd, sv, pv) => {
+  g.delete(gameId); sv.delete(gameId); pv.delete(gameId);
+  const q = st.index('gameId').getAllKeys(gameId); q.onsuccess = () => q.result.forEach(id => { st.delete(id); sd.delete(id); });
 });
+// One-time: copy v2.0 single-slot saves (current + automatic backup) into the multi-save list
+async function migrateSlots() {
+  if (localStorage.getItem('dp2.slots')) return;
+  await tx(['saves', 'prev', 'states', 'stateData'], 'readwrite', (sv, pv, st, sd) => {
+    const add = (s, label) => {
+      if (!s || !s.changes) return;
+      const r = st.add({ gameId: s.gameId, gameName: s.gameName, label, kind: 'manual', savSize: s.savSize, size: s.changes.length, createdAt: s.createdAt, thumb: null });
+      r.onsuccess = () => sd.put(s.changes, r.result);
+    };
+    const a = pv.getAll();
+    a.onsuccess = () => { a.result.forEach(s => add(s, 'Older save (backup)')); const b = sv.getAll(); b.onsuccess = () => b.result.forEach(s => add(s, 'Save')); };
+  });
+  localStorage.setItem('dp2.slots', '1');
+}
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+async function storageEstimate() {
+  try { const e = await navigator.storage.estimate(); return { used: e.usage || 0, quota: e.quota || 0 }; } catch (e) { return null; }
+}
 
 // ═════════════════════════════════════════════════════════════
 // ZIP helpers
@@ -422,7 +604,7 @@ async function hashId(bytes) {
 // Emulator
 // ═════════════════════════════════════════════════════════════
 let dosInstance = null, CI = null, current = null; // current = { id, name }
-let frames = 0, bootAt = 0, busy = false;
+let frames = 0, bootAt = 0, busy = false, lastSaveAt = 0, lastInputAt = 0;
 
 async function stopEmu() {
   const d = dosInstance; dosInstance = null; CI = null; current = null;
@@ -431,27 +613,47 @@ async function stopEmu() {
   $('dos-root').innerHTML = '';
 }
 
-// Start a game from the library. If restore=true, jump to its saved state.
-async function launch(id, restore) {
+// ── Session marker: lets the next page load notice a crash / iOS memory kill ──
+function setSession(patch) {
+  try { const s = Object.assign(JSON.parse(localStorage.getItem(SESSION_KEY) || '{}'), patch, { beat: Date.now() }); localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch (e) {}
+}
+function clearSession() { try { localStorage.removeItem(SESSION_KEY); } catch (e) {} }
+setInterval(() => { if (current && !document.hidden) setSession({}); }, 10000);
+document.addEventListener('visibilitychange', () => {
+  if (!current) return;
+  if (document.hidden) { setSession({ hiddenAt: Date.now() }); logEvt('info', 'App went to background'); }
+  else { setSession({ hiddenAt: 0 }); logEvt('info', 'App back in foreground'); }
+});
+// Fires on reload / closing the tab — but not when iOS silently discards a backgrounded page
+window.addEventListener('pagehide', () => { if (current) setSession({ unloadedAt: Date.now() }); });
+
+// Start a game from the library. stateId: load that snapshot once running (null = fresh start).
+async function launch(id, stateId) {
   if (busy) return; busy = true;
-  hideErr();
+  hideErr(); closeSheets();
+  let bundleUrl = null;
   try {
     showLoad('LOADING');
     const game = await dbGet('games', id);
     if (!game) throw new Error('Game not found in library');
-    const save = restore ? await dbGet('saves', id) : null;
-    if (restore && !save) throw new Error('No save for this game');
-    let files = null;
-    if (save) files = await unzipAll(save.changes); // fail early if the save is unreadable
+    let files = null, meta = null;
+    if (stateId) {
+      meta = await dbGet('states', stateId);
+      const data = await stateData(stateId);
+      if (!meta || !data) throw new Error('That save is missing');
+      files = await unzipAll(data); // fail early if the save is unreadable
+    }
 
     await stopEmu();
     $('launch').classList.add('hidden');
-    showLoad(save ? 'RESTORING' : 'STARTING');
+    document.body.classList.add('playing');
+    showLoad(meta ? 'RESTORING' : 'STARTING');
     frames = 0;
+    bundleUrl = URL.createObjectURL(new Blob([game.bundle], { type: 'application/zip' }));
     const ready = new Promise((resolve, reject) => {
       const to = setTimeout(() => reject(new Error('Emulator did not start')), 60000);
       dosInstance = window.Dos($('dos-root'), {
-        url: URL.createObjectURL(new Blob([game.bundle], { type: 'application/zip' })),
+        url: bundleUrl,
         pathPrefix: '/DosPlay/emulators/', backend: 'dosboxX', backendLocked: true,
         noCloud: true, noNetworking: true, workerThread: true, autoStart: true, kiosk: true,
         thinSidebar: true, renderAspect: '4/3',
@@ -459,86 +661,190 @@ async function launch(id, restore) {
           if (ev !== 'ci-ready') return;
           clearTimeout(to); CI = ci; bootAt = Date.now();
           try { ci.events().onFrame(() => { frames++; }); } catch (e) {}
+          try { ci.events().onMessage((type, ...a) => { if (type === 'error') logEvt('emu', a.join(' ')); }); } catch (e) {}
+          try { ci.events().onExit(() => { if (CI === ci) emuTrouble('The emulator shut down unexpectedly.'); }); } catch (e) {}
           resolve(ci);
         },
       });
     });
     const ci = await ready;
+    URL.revokeObjectURL(bundleUrl); bundleUrl = null; // bundle is loaded; don't keep a second copy alive
     current = { id, name: game.name };
+    setSession({ gameId: id, name: game.name, startedAt: Date.now(), hiddenAt: 0 });
+    logEvt('info', 'Started ' + game.name + (meta ? ' from “' + meta.label + '”' : ''));
     $('tabs').classList.toggle('multidisk', (game.disks || 1) > 1);
     tx('games', 'readwrite', st => { game.lastPlayed = Date.now(); st.put(game, id); }).catch(() => {});
 
-    if (save) {
+    if (files) {
       for (const f of files) await ci.fsWriteFile(f.name, f.data);
-      // The machine must be fully running before a state can be loaded.
-      // Too early crashes or silently garbles the screen, so wait for real frames.
-      const ok = await waitFor(() => frames >= 12 && Date.now() - bootAt >= 2500, 45000, 100);
+      // The machine must be running before a state can be loaded (too early crashes or garbles the screen).
+      // Frames only arrive when the picture changes, so a still title screen must not block forever.
+      const ok = await waitFor(() => { const t = Date.now() - bootAt; return t >= 2500 && (frames >= 12 || (frames >= 1 && t >= 4000)); }, 45000, 100);
       if (!ok) throw new Error('Emulator too slow to restore — try again');
       ci.sendBackendEvent({ type: 'wc-trigger-event', event: 'hand_loadstate' });
       await sleep(600);
-      toast('↩ Restored ' + fmtWhen(save.createdAt));
+      toast('↩ ' + meta.label + ' · ' + fmtWhen(meta.createdAt));
     } else {
       toast('▶ ' + game.name);
     }
+    lastSaveAt = lastInputAt = Date.now();
   } catch (e) {
     console.error(e);
-    await stopEmu();
+    if (bundleUrl) URL.revokeObjectURL(bundleUrl);
+    await stopEmu(); clearSession();
+    document.body.classList.remove('playing');
     $('launch').classList.remove('hidden');
     showErr(e.message || String(e));
     renderLibrary();
   } finally { hideLoad(); busy = false; }
 }
 
-async function savSize() {
-  const t = await CI.fsTree();
+async function savSize(ci) {
+  const t = await ci.fsTree();
   const dir = (t.nodes || []).find(n => n.name === 'save');
   const f = dir && (dir.nodes || []).find(n => n.name === '1.sav');
   return f ? f.size : 0;
 }
 
-// Save full machine state: snapshot → verify → commit (old save kept as backup)
-async function saveState() {
-  if (!CI || !current) { toast('Start a game first'); return; }
-  if (busy) return; busy = true;
-  const ci = CI, game = current;
-  showLoad('SAVING');
-  try {
-    if (await savSize() > 0) { try { await ci.fsDeleteFile('save/1.sav'); } catch (e) {} }
-    ci.sendBackendEvent({ type: 'wc-trigger-event', event: 'hand_savestate' });
-    // Wait until the state file exists and has stopped growing
-    let last = -1, size = 0;
-    const ok = await waitFor(async () => { size = await savSize(); const stable = size > 0 && size === last; last = size; return stable; }, 20000, 300);
-    if (!ok) throw new Error('Emulator did not write a state file');
-    const changes = await ci.persist(true); // only files that differ from the original game (incl. save/1.sav)
-    if (!changes || !changes.length) throw new Error('Empty snapshot');
-    const sav = zipList(changes).find(e => e.name === 'save/1.sav');
-    if (!sav || sav.usize !== size) throw new Error('Snapshot did not include the state file');
-    await zipRead(changes, sav); // proves it decompresses intact
-    if (CI !== ci) throw new Error('Game changed during save');
-    await commitSave({ gameId: game.id, gameName: game.name, changes, savSize: size, createdAt: Date.now() });
-    toast('💾 Saved');
-  } catch (e) {
-    console.error(e);
-    toast('Save failed: ' + (e.message || e) + ' — previous save kept', true);
-  } finally { hideLoad(); busy = false; }
+// Full machine snapshot: DOSBox-X writes save/1.sav, then we pack every changed file
+async function captureState(ci) {
+  if (await savSize(ci) > 0) { try { await ci.fsDeleteFile('save/1.sav'); } catch (e) {} }
+  ci.sendBackendEvent({ type: 'wc-trigger-event', event: 'hand_savestate' });
+  // Wait until the state file exists and has stopped growing
+  let last = -1, size = 0;
+  const ok = await waitFor(async () => { size = await savSize(ci); const stable = size > 0 && size === last; last = size; return stable; }, 20000, 300);
+  if (!ok) throw new Error('Emulator did not write a state file');
+  const changes = await ci.persist(true); // only files that differ from the original game (incl. save/1.sav)
+  if (!changes || !changes.length) throw new Error('Empty snapshot');
+  const sav = zipList(changes).find(e => e.name === 'save/1.sav');
+  if (!sav || sav.usize !== size) throw new Error('Snapshot did not include the state file');
+  await zipRead(changes, sav); // proves it decompresses intact
+  return { changes, size };
 }
 
-// Restore the current game's last save without restarting
-async function restoreState() {
-  if (!CI || !current) { toast('Start a game first'); return; }
-  if (busy) return;
-  const save = await dbGet('saves', current.id);
-  if (!save) { toast('No save yet for this game'); return; }
-  if (!confirm('Restore save from ' + fmtWhen(save.createdAt) + '?\nProgress since then will be lost.')) return;
-  busy = true; showLoad('RESTORING');
+// Small JPEG of the current screen, for the saves list
+async function thumbOf(ci) {
   try {
-    const files = await unzipAll(save.changes);
+    const img = await Promise.race([ci.screenshot(), sleep(2000).then(() => null)]);
+    if (!img || !img.width) return null;
+    const src = document.createElement('canvas'); src.width = img.width; src.height = img.height;
+    src.getContext('2d').putImageData(img, 0, 0);
+    const c = document.createElement('canvas'); c.width = 160; c.height = 120; // DOS games are shown 4:3
+    c.getContext('2d').drawImage(src, 0, 0, 160, 120);
+    return c.toDataURL('image/jpeg', 0.72);
+  } catch (e) { return null; }
+}
+
+// Save a NEW snapshot. Nothing is ever overwritten: manual saves stay until you delete them,
+// autosaves rotate (newest AUTO_KEEP kept per game).
+async function saveState(opts = {}) {
+  const kind = opts.kind || 'manual';
+  if (!CI || !current) { if (!opts.quiet) toast('Start a game first'); return null; }
+  if (busy) { if (!opts.quiet) toast('Still busy — try again in a moment'); return null; }
+  busy = true;
+  const ci = CI, game = current;
+  if (opts.quiet) setStatus('saving…'); else showLoad('SAVING');
+  try {
+    const thumb = await thumbOf(ci); // the picture the player sees when they tap Save
+    const { changes, size } = await captureState(ci);
+    if (CI !== ci) throw new Error('Game changed during save');
+    let label = opts.label;
+    if (!label) label = kind === 'auto' ? 'Autosave' : 'Save ' + ((await statesOf(game.id)).filter(s => s.kind === 'manual').length + 1);
+    const id = await addState({ gameId: game.id, gameName: game.name, label, kind, savSize: size, size: changes.length, createdAt: Date.now(), thumb }, changes);
+    lastSaveAt = Date.now();
+    logEvt('info', (kind === 'auto' ? 'Autosaved' : 'Saved') + ' “' + label + '” (' + fmtSize(changes.length) + ')');
+    if (kind === 'manual' && !opts.label) toast('💾 Saved as “' + label + '” — tap to name it', false, () => renameState(id, label));
+    else if (kind === 'manual') toast('💾 Saved “' + label + '”');
+    warnIfStorageLow();
+    return id;
+  } catch (e) {
+    console.error(e);
+    if (!opts.quiet || kind === 'auto') toast((kind === 'auto' ? 'Autosave' : 'Save') + ' failed: ' + (e.message || e) + ' — older saves are safe', true);
+    return null;
+  } finally { if (opts.quiet) setStatus(''); else hideLoad(); busy = false; }
+}
+
+// Load a snapshot into the running game. First takes an "undo" autosave of where you are now,
+// so loading the wrong save never costs you progress.
+async function loadState(id) {
+  if (!CI || !current) { toast('Start a game first'); return; }
+  if (busy) { toast('Still busy — try again in a moment'); return; }
+  const meta = await dbGet('states', id);
+  if (!meta) { toast('That save is missing', true); return; }
+  closeSheets();
+  showLoad('SAVING UNDO POINT');
+  await saveState({ kind: 'auto', label: meta.kind === 'auto' ? 'Before loading an autosave' : 'Before loading “' + meta.label + '”', quiet: true });
+  busy = true; showLoad('LOADING SAVE');
+  try {
+    const files = await unzipAll(await stateData(id));
     for (const f of files) await CI.fsWriteFile(f.name, f.data);
     CI.sendBackendEvent({ type: 'wc-trigger-event', event: 'hand_loadstate' });
     await sleep(600);
-    toast('↩ Restored');
-  } catch (e) { toast('Restore failed: ' + (e.message || e), true); }
+    lastSaveAt = Date.now();
+    logEvt('info', 'Loaded “' + meta.label + '”');
+    toast('↩ Loaded “' + meta.label + '”');
+  } catch (e) { console.error(e); toast('Load failed: ' + (e.message || e), true); }
   finally { hideLoad(); busy = false; }
+}
+
+async function renameState(id, cur) {
+  const name = await askText('Name this save', cur, 'Rename');
+  if (!name) return;
+  await updateState(id, { label: name, kind: 'manual' }); // a named autosave is kept for good
+  toast('✎ Renamed to “' + name + '”');
+  if ($('saves-scrim').classList.contains('show')) renderSaves();
+}
+
+async function warnIfStorageLow() {
+  const e = await storageEstimate();
+  if (e && e.quota && e.used / e.quota > 0.85) toast('Storage almost full — delete old saves or games', true);
+}
+
+// ── Autosave: every N minutes of actual play (not while idle on a menu for ages) ──
+const autosaveMin = () => { const v = localStorage.getItem('dp.autosave'); return v === null ? 5 : +v; };
+['pointerdown', 'keydown'].forEach(t => window.addEventListener(t, () => { lastInputAt = Date.now(); }, true));
+setInterval(() => {
+  const m = autosaveMin();
+  if (!m || !CI || busy || document.hidden || $('loading').classList.contains('show')) return;
+  if (Date.now() - lastSaveAt < m * 60000) return;
+  if (Date.now() - lastInputAt > 10 * 60000) return; // nobody's playing; nothing new to protect
+  saveState({ kind: 'auto', quiet: true });
+}, 20000);
+
+// ── Watchdog: a hung or crashed emulator worker stops answering messages ──
+let wdMisses = 0, wdArmed = false, wdBusy = false, troubleOpen = false;
+setInterval(async () => {
+  if (!CI || busy || wdBusy || document.hidden || troubleOpen) return;
+  const ci = CI; wdBusy = true;
+  const ok = await Promise.race([ci.asyncifyStats().then(() => true, () => false), sleep(10000).then(() => false)]);
+  wdBusy = false;
+  if (CI !== ci || document.hidden) return;
+  if (ok) { wdArmed = true; wdMisses = 0; return; } // only judge once the ping is known to work
+  if (wdArmed && ++wdMisses >= 2) emuTrouble('The emulator stopped responding.');
+}, 15000);
+
+async function emuTrouble(reason) {
+  if (troubleOpen || !current) return;
+  troubleOpen = true; logEvt('error', reason);
+  const game = current, latest = (await statesOf(game.id))[0];
+  const v = await dialog({
+    title: 'Game problem', msg: reason + (latest ? '\n\nLatest save: “' + latest.label + '”, ' + fmtWhen(latest.createdAt) + '.' : ''),
+    buttons: [{ label: 'Keep waiting', value: 'wait' }, ...(latest ? [{ label: 'Reload latest save', value: 'reload', cls: 'primary' }] : []), { label: 'Library', value: 'lib' }],
+  });
+  troubleOpen = false; wdMisses = 0;
+  if (v === 'reload') restartInto(game.id, latest.id);
+  else if (v === 'lib') leaveToLibrary();
+}
+
+// A fresh page is the only reliable way to free a crashed/old emulator's memory (big deal on iOS),
+// so leaving a game reloads the page. pendingLaunch survives the reload.
+function restartInto(gameId, stateId) {
+  try { sessionStorage.setItem('dp.pending', JSON.stringify({ gameId, stateId })); } catch (e) {}
+  leaveToLibrary();
+}
+function leaveToLibrary() {
+  clearSession(); busy = true; showLoad('CLOSING');
+  Promise.race([stopEmu(), sleep(2000)]).finally(() => location.reload());
 }
 
 // Multi-disk games: rotate to the next floppy image (DOSBox-X swap)
@@ -549,12 +855,14 @@ function nextDisk() {
 }
 
 async function eject() {
-  if (busy) return; busy = true;
-  try {
-    await stopEmu();
-    $('launch').classList.remove('hidden');
-    await renderLibrary();
-  } finally { busy = false; }
+  if (busy || !current) return;
+  if (Date.now() - lastSaveAt > 30000) {
+    const v = await dialog({ title: 'Leave ' + current.name + '?', msg: 'Last save: ' + (lastSaveAt ? fmtAgo(lastSaveAt) : 'never') + '.',
+      buttons: [{ label: 'Cancel' }, { label: 'Quit', value: 'quit', cls: 'danger' }, { label: 'Save & quit', value: 'save', cls: 'primary' }] });
+    if (!v) return;
+    if (v === 'save' && !(await saveState({ label: 'Saved on exit' }))) return;
+  }
+  leaveToLibrary();
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -582,36 +890,147 @@ async function addGameFile(file) {
 let renderGen = 0;
 async function renderLibrary() {
   const lib = $('library'), gen = ++renderGen;
-  let games = [], saves = [];
-  try { [games, saves] = await Promise.all([dbAll('games'), dbAll('saves')]); } catch (e) { lib.innerHTML = ''; return; }
+  let games = [], states = [];
+  try { [games, states] = await Promise.all([dbAll('games'), dbAll('states')]); } catch (e) { lib.innerHTML = ''; return; }
   if (gen !== renderGen) return; // a newer render is in flight
-  const saveBy = Object.fromEntries(saves.map(s => [s.gameId, s]));
-  games.sort((a, b) => Math.max(b.lastPlayed, (saveBy[b.id] || {}).createdAt || 0) - Math.max(a.lastPlayed, (saveBy[a.id] || {}).createdAt || 0) || b.addedAt - a.addedAt);
+  const by = {};
+  for (const s of byNewest(states)) (by[s.gameId] = by[s.gameId] || []).push(s);
+  const touched = g => Math.max(g.lastPlayed || 0, ((by[g.id] || [])[0] || {}).createdAt || 0);
+  games.sort((a, b) => touched(b) - touched(a) || b.addedAt - a.addedAt);
   lib.innerHTML = '';
-  $('backup').style.display = games.length || saves.length ? 'flex' : 'none';
+  $('backup').style.display = games.length || states.length ? 'flex' : 'none';
+  renderStorageInfo();
   if (!games.length) return;
   const h = document.createElement('h3'); h.textContent = 'YOUR GAMES'; lib.appendChild(h);
   for (const g of games) {
-    const s = saveBy[g.id];
+    const list = by[g.id] || [], s = list[0];
     const row = document.createElement('div'); row.className = 'game';
+    // Tapping the game (picture + name) opens its saves, so any older save can be picked
+    const tap = document.createElement('div'); tap.className = 'tap';
+    const th = document.createElement('div'); th.className = 'thumb';
+    if (s && s.thumb) th.style.backgroundImage = 'url(' + s.thumb + ')'; else th.textContent = '💾';
     const info = document.createElement('div'); info.className = 'info';
     const nm = document.createElement('div'); nm.className = 'name'; nm.textContent = g.name;
     const sub = document.createElement('div'); sub.className = 'sub' + (s ? ' saved' : '');
-    sub.textContent = s ? 'Saved ' + fmtWhen(s.createdAt) : 'No save yet · ' + fmtSize(g.size);
-    info.append(nm, sub); row.appendChild(info);
+    sub.textContent = s ? list.length + ' save' + (list.length > 1 ? 's' : '') + ' · ' + fmtWhen(s.createdAt) : 'No saves yet · ' + fmtSize(g.size);
+    info.append(nm, sub); tap.append(th, info); row.appendChild(tap);
+    tap.onclick = () => openSaves(g.id, g.name);
     const btn = (label, cls, fn) => { const b = document.createElement('div'); b.className = 'sbtn ' + cls; b.textContent = label; b.onclick = fn; row.appendChild(b); };
-    if (s) btn('Continue', 'primary', () => launch(g.id, true));
-    btn(s ? 'New' : 'Play', '', () => {
-      if (s && !confirm('Start "' + g.name + '" from the beginning?\nYour save stays until you save again.')) return;
-      launch(g.id, false);
-    });
-    btn('✕', 'ghost', async () => {
-      if (!confirm('Remove "' + g.name + '" and its save from this device?')) return;
-      await tx(['games', 'saves', 'prev'], 'readwrite', (a, b, c) => { a.delete(g.id); b.delete(g.id); c.delete(g.id); });
-      renderLibrary();
+    if (s) btn('Continue', 'primary', () => launch(g.id, s.id));
+    btn(s ? 'New' : 'Play', '', async () => {
+      if (s && !(await confirmDlg('Start “' + g.name + '” from the beginning?', 'Your saves are kept.', 'Start over'))) return;
+      launch(g.id, null);
     });
     lib.appendChild(row);
   }
+}
+
+async function renderStorageInfo() {
+  const e = await storageEstimate();
+  $('storage-info').textContent = e && e.used ? fmtSize(e.used) + ' used' : '';
+}
+
+// ── Saves sheet (from the library, or in game via 📂 Saves) ──
+let savesCtx = null; // { gameId, name }
+function closeSheets() { document.querySelectorAll('.scrim:not(.center)').forEach(s => s.classList.remove('show')); }
+function openSaves(gameId, name) {
+  savesCtx = { gameId, name };
+  $('saves-title').textContent = name;
+  $('saves-new').style.display = current && current.id === gameId ? '' : 'none';
+  $('autosave-sel').value = String(autosaveMin());
+  $('saves-scrim').classList.add('show');
+  renderSaves();
+}
+async function renderSaves() {
+  if (!savesCtx) return;
+  const { gameId } = savesCtx, inGame = !!(current && current.id === gameId);
+  const list = await statesOf(gameId), box = $('saves-list');
+  box.innerHTML = '';
+  const manual = list.filter(s => s.kind !== 'auto').length;
+  $('saves-count').textContent = manual + ' saved · ' + (list.length - manual) + ' auto';
+  if (!list.length) {
+    box.innerHTML = '<div class="empty">No saves yet.<br>' + (inGame ? 'Tap <b>＋ New save</b> to snapshot this exact moment.' : 'Start the game and tap <b>💾 Save</b> any time.') + '</div>';
+  }
+  list.forEach((s, i) => {
+    const row = document.createElement('div'); row.className = 'state' + (i === 0 ? ' latest' : '');
+    const th = document.createElement('div'); th.className = 'thumb';
+    if (s.thumb) th.style.backgroundImage = 'url(' + s.thumb + ')'; else th.textContent = '💾';
+    const info = document.createElement('div'); info.className = 'info';
+    const nm = document.createElement('div'); nm.className = 'name'; nm.textContent = s.label;
+    const sub = document.createElement('div'); sub.className = 'sub';
+    if (s.kind === 'auto') { const b = document.createElement('span'); b.className = 'badge auto'; b.textContent = 'AUTO'; sub.appendChild(b); }
+    if (i === 0) { const b = document.createElement('span'); b.className = 'badge'; b.textContent = 'LATEST'; sub.appendChild(b); }
+    sub.appendChild(document.createTextNode(fmtWhen(s.createdAt) + ' · ' + fmtSize(s.size || 0)));
+    info.append(nm, sub);
+    const acts = document.createElement('div'); acts.className = 'acts';
+    const b = (label, cls, fn) => { const e = document.createElement('div'); e.className = 'sbtn ' + cls; e.textContent = label; e.onclick = ev => { ev.stopPropagation(); fn(); }; acts.appendChild(e); };
+    b('Load', 'primary', async () => {
+      if (inGame) {
+        if (!(await confirmDlg('Load “' + s.label + '”?', 'Where you are now is kept as an autosave, so you can come back to it.', 'Load'))) return;
+        loadState(s.id);
+      } else launch(gameId, s.id);
+    });
+    b('✎', 'ibtn', () => renameState(s.id, s.label));
+    b('🗑', 'ibtn ghost', async () => {
+      if (!(await confirmDlg('Delete “' + s.label + '”?', fmtWhen(s.createdAt) + '. This can’t be undone.', 'Delete', true))) return;
+      await deleteState(s.id); renderSaves(); renderLibrary();
+    });
+    row.append(th, info, acts); box.appendChild(row);
+  });
+  if (!inGame) {
+    const del = document.createElement('div'); del.className = 'sbtn ghost'; del.style.cssText = 'margin:14px auto 2px;width:max-content';
+    del.textContent = 'Remove game from this device';
+    del.onclick = async () => {
+      if (!(await confirmDlg('Remove “' + savesCtx.name + '”?', 'The game and all ' + list.length + ' of its saves will be deleted from this device. Back up saves first if you want to keep them.', 'Remove', true))) return;
+      await deleteGame(gameId); closeSheets(); renderLibrary();
+    };
+    box.appendChild(del);
+  }
+}
+$('saves-close').onclick = closeSheets;
+$('saves-scrim').onclick = e => { if (e.target === $('saves-scrim')) closeSheets(); };
+$('saves-new').onclick = async () => {
+  const label = await askText('Name this save', 'Save ' + ((await statesOf(current.id)).filter(s => s.kind !== 'auto').length + 1));
+  if (label === null) return;
+  closeSheets();
+  await saveState({ label: label || undefined });
+};
+$('autosave-sel').onchange = e => { localStorage.setItem('dp.autosave', e.target.value); toast(+e.target.value ? 'Autosave every ' + e.target.value + ' min' : 'Autosave off'); };
+
+// ── Diagnostics sheet ──
+function logText() {
+  const log = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+  const head = 'DOS/PLAY v' + APP_VERSION + ' · ' + navigator.userAgent + '\n\n';
+  return head + (log.length ? log.slice().reverse().map(l => new Date(l.t).toLocaleString() + ' [' + l.level + ']' + (l.game ? ' ' + l.game + ':' : '') + ' ' + l.msg).join('\n') : 'Nothing logged yet.');
+}
+$('log-btn').onclick = () => { $('log-text').textContent = logText(); $('log-scrim').classList.add('show'); };
+$('log-close').onclick = closeSheets;
+$('log-scrim').onclick = e => { if (e.target === $('log-scrim')) closeSheets(); };
+$('log-copy').onclick = async () => { try { await navigator.clipboard.writeText(logText()); toast('Copied'); } catch (e) { toast('Copy failed — select the text instead', true); } };
+$('log-clear').onclick = () => { localStorage.removeItem(LOG_KEY); $('log-text').textContent = logText(); };
+
+// ── Last session ended without leaving the game → crash or iOS reclaimed memory ──
+async function checkLastSession() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch (e) {}
+  clearSession();
+  if (!s || !s.gameId) return;
+  const how = s.unloadedAt ? 'closed' : s.hiddenAt ? 'background' : 'crash';
+  logEvt(how === 'closed' ? 'info' : 'error', 'Previous session of ' + s.name + ' ended: ' + ({ closed: 'page closed/reloaded mid-game', background: 'discarded while in background', crash: 'page crashed while playing' })[how] + ' (last sign of life ' + new Date(s.beat).toLocaleTimeString() + ')');
+  const latest = (await statesOf(s.gameId))[0];
+  const box = document.createElement('div'); box.className = 'notice';
+  box.textContent = ({
+    closed: '“' + s.name + '” was closed or reloaded without leaving the game.',
+    background: '“' + s.name + '” was shut down while DOS/PLAY was in the background — iOS does this to free memory.',
+    crash: '“' + s.name + '” crashed while playing — usually the browser running out of memory.',
+  })[how] + ' Unsaved progress since the last save is lost.' +
+    (latest ? ' Your latest save is “' + latest.label + '” from ' + fmtWhen(latest.createdAt) + '.' : ' There was no save for it yet.');
+  const row = document.createElement('div'); row.className = 'row';
+  const b = (label, cls, fn) => { const e = document.createElement('div'); e.className = 'sbtn ' + cls; e.textContent = label; e.onclick = () => { box.remove(); fn && fn(); }; row.appendChild(e); };
+  if (latest && await dbGet('games', s.gameId)) b('Resume', 'primary', () => launch(s.gameId, latest.id));
+  b('Details', '', () => $('log-btn').onclick());
+  b('Dismiss', 'ghost');
+  box.appendChild(row); $('notice-slot').appendChild(box);
 }
 
 $('launch-btn').onclick = () => $('file-input').click();
@@ -619,34 +1038,46 @@ $('file-input').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = '';
   if (!f || busy) return;
   hideErr();
-  try { const id = await addGameFile(f); hideLoad(); await renderLibrary(); await launch(id, false); }
+  try { const id = await addGameFile(f); hideLoad(); await renderLibrary(); await launch(id, null); }
   catch (err) { hideLoad(); showErr(err.message || String(err)); }
 });
 
-// ── Backup / restore saves (small: saves only, games stay on device) ──
+// ── Backup / restore saves (saves only; games stay on device) ──
 function toB64(u) { let s = ''; for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode.apply(null, u.subarray(i, i + 8192)); return btoa(s); }
 function fromB64(b) { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
 $('export-btn').onclick = async () => {
-  const saves = await dbAll('saves');
-  if (!saves.length) { toast('No saves to back up'); return; }
-  const out = { format: 'dosplay-saves', version: 2, exportedAt: Date.now(), saves: saves.map(s => ({ gameId: s.gameId, gameName: s.gameName, createdAt: s.createdAt, savSize: s.savSize, changes: toB64(s.changes) })) };
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([JSON.stringify(out)], { type: 'application/json' })), download: 'dosplay-saves-' + new Date().toISOString().slice(0, 10) + '.dosplay' });
-  document.body.appendChild(a); a.click(); a.remove();
-  toast('Backed up ' + saves.length + ' save' + (saves.length > 1 ? 's' : ''));
+  const states = await dbAll('states');
+  if (!states.length) { toast('No saves to back up'); return; }
+  showLoad('PACKING');
+  try {
+    const parts = ['{"format":"dosplay-saves","version":3,"exportedAt":' + Date.now() + ',"states":['];
+    for (let i = 0; i < states.length; i++) { // one save at a time keeps memory flat
+      const s = states[i], data = await stateData(s.id); if (!data) continue;
+      parts.push((parts.length > 1 ? ',' : '') + JSON.stringify({ gameId: s.gameId, gameName: s.gameName, label: s.label, kind: s.kind, createdAt: s.createdAt, savSize: s.savSize, thumb: s.thumb, changes: toB64(data) }));
+    }
+    parts.push(']}');
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob(parts, { type: 'application/json' })), download: 'dosplay-saves-' + new Date().toISOString().slice(0, 10) + '.dosplay' });
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('Backed up ' + states.length + ' save' + (states.length > 1 ? 's' : ''));
+  } finally { hideLoad(); }
 };
 $('import-btn').onclick = () => $('import-input').click();
 $('import-input').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
     const obj = JSON.parse(await f.text());
-    let n = 0;
-    if (obj.version === 2 && Array.isArray(obj.saves)) {
-      for (const s of obj.saves) {
+    let n = 0, skipped = 0;
+    const list = obj.version === 3 ? obj.states : obj.version === 2 ? obj.saves : null;
+    if (Array.isArray(list)) {
+      const have = new Set((await dbAll('states')).map(s => s.gameId + '@' + s.createdAt));
+      for (const s of list) {
+        if (have.has(s.gameId + '@' + s.createdAt)) { skipped++; continue; } // already on this device
         const changes = fromB64(s.changes);
         if (!zipList(changes).some(x => x.name === 'save/1.sav')) continue;
-        await commitSave({ gameId: s.gameId, gameName: s.gameName, changes, savSize: s.savSize, createdAt: s.createdAt }); n++;
+        await addState({ gameId: s.gameId, gameName: s.gameName, label: s.label || 'Imported save', kind: s.kind === 'auto' ? 'auto' : 'manual', savSize: s.savSize, size: changes.length, createdAt: s.createdAt, thumb: s.thumb || null }, changes);
+        n++;
       }
-      toast('Restored ' + n + ' save' + (n === 1 ? '' : 's') + ' — load the matching game ZIP if it isn\'t listed');
+      toast('Restored ' + n + ' save' + (n === 1 ? '' : 's') + (skipped ? ' (' + skipped + ' already here)' : '') + ' — add the matching game if it isn\'t listed');
     } else if (Array.isArray(obj.saves)) { // v1 backups held whole game bundles
       for (const s of obj.saves) { if (await importLegacyBundle(fromB64(s.data), (s.meta && s.meta.name) || 'Imported game')) n++; }
       toast('Imported ' + n + ' game' + (n === 1 ? '' : 's') + ' from old backup');
@@ -741,9 +1172,9 @@ document.querySelectorAll('.hold').forEach(el => {
 let menuOpen = false;
 function setMenu(open) { menuOpen = open; $('tabs').classList.toggle('menu-open', open); $('tab-menu').classList.toggle('on', open); }
 $('tab-menu').onclick = () => setMenu(!menuOpen);
-document.querySelectorAll('.menu-item').forEach(el => el.onclick = () => {
+document.querySelectorAll('.menu-item, #tab-save, #tab-saves').forEach(el => el.onclick = () => {
   setMenu(false);
-  ({ save: saveState, restore: restoreState, eject, disk: nextDisk })[el.dataset.action]();
+  ({ save: () => saveState(), saves: () => current && openSaves(current.id, current.name), eject, disk: nextDisk })[el.dataset.action]();
 });
 
 // ── iOS keyboard (Type ⇄ D-Pad) ──────────────────────────────
@@ -788,10 +1219,19 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 
 // Boot
-migrateV1().then(renderLibrary);
+(async () => {
+  await migrateV1();
+  try { await migrateSlots(); } catch (e) { console.error('Save migration failed', e); }
+  await renderLibrary();
+  await checkLastSession();
+  // Coming back from "Reload latest save" after a crash
+  let pending = null;
+  try { pending = JSON.parse(sessionStorage.getItem('dp.pending') || 'null'); sessionStorage.removeItem('dp.pending'); } catch (e) {}
+  if (pending) await launch(pending.gameId, pending.stateId);
+})();
 
 // Test hook (harmless in production)
-window.__dosplay = { get ci() { return CI; }, get current() { return current; }, get frames() { return frames; }, get busy() { return busy; }, saveState, restoreState, launch, eject, tapKey, typeChar };
+window.__dosplay = { get ci() { return CI; }, get current() { return current; }, get frames() { return frames; }, get busy() { return busy; }, saveState, loadState, launch, eject, statesOf, openSaves, emuTrouble, tapKey, typeChar };
 })();
 </script>
 </body>
