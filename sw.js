@@ -1,7 +1,7 @@
 // DOS/PLAY service worker — offline support
 // Page: network-first (so updates arrive), falls back to cache offline.
 // Engine/assets: cache-first (large, versioned by CACHE name).
-const CACHE = 'dosplay-2.2.4';
+const CACHE = 'dosplay-2.2.5';
 const PRECACHE = [
   '/DosPlay/',
   '/DosPlay/index.html',
@@ -36,6 +36,7 @@ self.addEventListener('fetch', e => {
   if (url.origin !== location.origin || !url.pathname.startsWith('/DosPlay/')) return; // blob: game bundles etc.
 
   if (req.mode === 'navigate') {
+    if (!/^\/DosPlay\/(index\.html)?$/.test(url.pathname)) return; // other pages (e.g. v20.html test) never replace the app's offline copy
     e.respondWith(
       fetch(req.url, { cache: 'no-store', credentials: 'same-origin' }).then(res => { // always ask the server for the newest page
         if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put('/DosPlay/index.html', copy)); }

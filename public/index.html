@@ -251,9 +251,7 @@ body.playing #game-wrap { bottom: calc(52px + var(--kbh)); }
   <div class="sheet">
     <div class="sheet-head"><h4 id="saves-title">Saves</h4><div class="sbtn primary" id="saves-new">＋ New save</div><div class="sbtn ghost ibtn" id="saves-close">✕</div></div>
     <div class="sheet-body" id="saves-list"></div>
-    <div class="sheet-foot"><span>Autosave</span>
-      <select id="autosave-sel"><option value="0">Off</option><option value="2">every 2 min</option><option value="5">every 5 min</option><option value="10">every 10 min</option><option value="15">every 15 min</option></select>
-      <span class="grow"></span><span id="saves-count"></span></div>
+    <div class="sheet-foot"><span class="grow"></span><span id="saves-count"></span></div>
   </div>
 </div>
 <!-- Diagnostics log -->
@@ -271,7 +269,7 @@ body.playing #game-wrap { bottom: calc(52px + var(--kbh)); }
 <script>
 (() => { // own scope: js-dos.js declares many short global names ($, ci, p, …)
 'use strict';
-const APP_VERSION = '2.2.4';
+const APP_VERSION = '2.2.5';
 const $ = id => document.getElementById(id);
 $('app-version').textContent = $('lib-version').textContent = 'v' + APP_VERSION;
 function setStatus(s) { const v = $('app-version'); v.textContent = s || 'v' + APP_VERSION; v.classList.toggle('busy', !!s); }
@@ -643,7 +641,6 @@ function setSession(patch) {
   try { const s = Object.assign(JSON.parse(localStorage.getItem(SESSION_KEY) || '{}'), patch, { beat: Date.now() }); localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch (e) {}
 }
 function clearSession() { try { localStorage.removeItem(SESSION_KEY); } catch (e) {} }
-setInterval(() => { if (current && !document.hidden) setSession({}); }, 10000);
 document.addEventListener('visibilitychange', () => {
   if (!current) return;
   if (document.hidden) { setSession({ hiddenAt: Date.now() }); logEvt('info', 'App went to background'); }
@@ -829,21 +826,10 @@ async function warnIfStorageLow() {
   if (e && e.quota && e.used / e.quota > 0.85) toast('Storage almost full — delete old saves or games', true);
 }
 
-// ── Autosave: every N minutes of actual play (not while idle on a menu for ages) ──
-const autosaveMin = () => { const v = localStorage.getItem('dp.autosave'); return v === null ? 5 : +v; };
-['pointerdown', 'keydown'].forEach(t => window.addEventListener(t, () => { lastInputAt = Date.now(); }, true));
-setInterval(() => {
-  const m = autosaveMin();
-  if (!m || !CI || busy || document.hidden || $('loading').classList.contains('show')) return;
-  if (Date.now() - lastSaveAt < m * 60000) return;
-  if (Date.now() - lastInputAt > 10 * 60000) return; // nobody's playing; nothing new to protect
-  saveState({ kind: 'auto', quiet: true });
-}, 20000);
-
 // ── Watchdog: a hung or crashed emulator worker stops answering messages ──
 let wdMisses = 0, wdArmed = false, wdBusy = false, troubleOpen = false;
-setInterval(async () => {
-  if (!POLL_EMU || !CI || busy || wdBusy || document.hidden || troubleOpen) return;
+if (POLL_EMU) setInterval(async () => {
+  if (!CI || busy || wdBusy || document.hidden || troubleOpen) return;
   const ci = CI; wdBusy = true;
   const st = await Promise.race([ci.asyncifyStats().then(s => s || {}, () => null), sleep(10000).then(() => null)]);
   const ok = !!st;
@@ -993,7 +979,6 @@ function openSaves(gameId, name) {
   savesCtx = { gameId, name };
   $('saves-title').textContent = name;
   $('saves-new').style.display = current && current.id === gameId ? '' : 'none';
-  $('autosave-sel').value = String(autosaveMin());
   $('saves-scrim').classList.add('show');
   renderSaves();
 }
@@ -1051,7 +1036,6 @@ $('saves-new').onclick = async () => {
   closeSheets();
   await saveState({ label: label || undefined });
 };
-$('autosave-sel').onchange = e => { localStorage.setItem('dp.autosave', e.target.value); toast(+e.target.value ? 'Autosave every ' + e.target.value + ' min' : 'Autosave off'); };
 
 // ── Diagnostics sheet ──
 function logText() {
