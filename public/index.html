@@ -271,7 +271,7 @@ body.playing #game-wrap { bottom: calc(52px + var(--kbh)); }
 <script>
 (() => { // own scope: js-dos.js declares many short global names ($, ci, p, …)
 'use strict';
-const APP_VERSION = '2.2.3';
+const APP_VERSION = '2.2.4';
 const $ = id => document.getElementById(id);
 $('app-version').textContent = $('lib-version').textContent = 'v' + APP_VERSION;
 function setStatus(s) { const v = $('app-version'); v.textContent = s || 'v' + APP_VERSION; v.classList.toggle('busy', !!s); }
@@ -625,6 +625,9 @@ async function hashId(bytes) {
 // ═════════════════════════════════════════════════════════════
 // Emulator
 // ═════════════════════════════════════════════════════════════
+// Crash hunt: v2.0 never polled the emulator while playing and played long stretches; v2.1+ crashes after
+// ~2 min. Polling (watchdog + memory/frame stats) and the message listener are off to test whether they're the cause.
+const POLL_EMU = false;
 let dosInstance = null, CI = null, current = null; // current = { id, name }
 let frames = 0, bootAt = 0, busy = false, lastSaveAt = 0, lastInputAt = 0;
 
@@ -686,7 +689,7 @@ async function launch(id, stateId) {
           if (ev !== 'ci-ready') return;
           clearTimeout(to); CI = ci; bootAt = Date.now();
           try { ci.events().onFrame(() => { frames++; }); } catch (e) {}
-          try { ci.events().onMessage((type, ...a) => { if (type === 'error') logEvt('emu', a.join(' ')); }); } catch (e) {}
+          if (POLL_EMU) try { ci.events().onMessage((type, ...a) => { if (type === 'error') logEvt('emu', a.join(' ')); }); } catch (e) {}
           try { ci.events().onExit(() => { if (CI === ci) emuTrouble('The emulator shut down unexpectedly.'); }); } catch (e) {}
           resolve(ci);
         },
@@ -709,7 +712,7 @@ async function launch(id, stateId) {
       ci.sendBackendEvent({ type: 'wc-trigger-event', event: 'hand_loadstate' });
       await sleep(600);
       toast('↩ ' + meta.label + ' · ' + fmtWhen(meta.createdAt));
-      readMem(ci);
+      if (POLL_EMU) readMem(ci);
     } else {
       toast('▶ ' + game.name);
     }
@@ -778,7 +781,7 @@ async function saveState(opts = {}) {
     if (!label) label = kind === 'auto' ? 'Autosave' : 'Save ' + ((await statesOf(game.id)).filter(s => s.kind === 'manual').length + 1);
     const id = await addState({ gameId: game.id, gameName: game.name, label, kind, savSize: size, size: changes.length, createdAt: Date.now(), thumb }, changes);
     lastSaveAt = Date.now();
-    logEvt('info', (kind === 'auto' ? 'Autosaved' : 'Saved') + ' “' + label + '” (' + fmtSize(changes.length) + ', emulator memory ' + (await readMem(ci)) + ' MB)');
+    logEvt('info', (kind === 'auto' ? 'Autosaved' : 'Saved') + ' “' + label + '” (' + fmtSize(changes.length) + (POLL_EMU ? ', emulator memory ' + (await readMem(ci)) + ' MB' : '') + ')');
     if (kind === 'manual' && !opts.label) toast('💾 Saved as “' + label + '” — tap to name it', false, () => renameState(id, label));
     else if (kind === 'manual') toast('💾 Saved “' + label + '”');
     warnIfStorageLow();
@@ -807,7 +810,7 @@ async function loadState(id) {
     CI.sendBackendEvent({ type: 'wc-trigger-event', event: 'hand_loadstate' });
     await sleep(600);
     lastSaveAt = Date.now();
-    logEvt('info', 'Loaded “' + meta.label + '” (emulator memory ' + (await readMem(CI)) + ' MB)');
+    logEvt('info', 'Loaded “' + meta.label + '”' + (POLL_EMU ? ' (emulator memory ' + (await readMem(CI)) + ' MB)' : ''));
     toast('↩ Loaded “' + meta.label + '”');
   } catch (e) { console.error(e); toast('Load failed: ' + (e.message || e), true); }
   finally { hideLoad(); busy = false; }
@@ -840,7 +843,7 @@ setInterval(() => {
 // ── Watchdog: a hung or crashed emulator worker stops answering messages ──
 let wdMisses = 0, wdArmed = false, wdBusy = false, troubleOpen = false;
 setInterval(async () => {
-  if (!CI || busy || wdBusy || document.hidden || troubleOpen) return;
+  if (!POLL_EMU || !CI || busy || wdBusy || document.hidden || troubleOpen) return;
   const ci = CI; wdBusy = true;
   const st = await Promise.race([ci.asyncifyStats().then(s => s || {}, () => null), sleep(10000).then(() => null)]);
   const ok = !!st;
