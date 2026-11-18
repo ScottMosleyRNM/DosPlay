@@ -271,7 +271,7 @@ body.playing #game-wrap { bottom: calc(52px + var(--kbh)); }
 <script>
 (() => { // own scope: js-dos.js declares many short global names ($, ci, p, …)
 'use strict';
-const APP_VERSION = '2.2.2';
+const APP_VERSION = '2.2.3';
 const $ = id => document.getElementById(id);
 $('app-version').textContent = $('lib-version').textContent = 'v' + APP_VERSION;
 function setStatus(s) { const v = $('app-version'); v.textContent = s || 'v' + APP_VERSION; v.classList.toggle('busy', !!s); }
@@ -846,10 +846,21 @@ setInterval(async () => {
   const ok = !!st;
   wdBusy = false;
   if (st && st.heap) noteMem(st.heap);
+  if (st && CI === ci) noteFrames(st.messageFrame);
   if (CI !== ci || document.hidden) return;
   if (ok) { wdArmed = true; wdMisses = 0; return; } // only judge once the ping is known to work
-  if (wdArmed && ++wdMisses >= 2) emuTrouble('The emulator stopped responding.');
-}, 15000);
+  if (wdArmed && ++wdMisses >= 4) emuTrouble('The emulator stopped responding.');
+}, 5000);
+
+// Frame backlog: frames the emulator has sent minus frames this page has received. Nothing slows the
+// emulator down if the page falls behind, so a growing backlog means memory piling up in message queues.
+let backlogLogged = 0;
+function noteFrames(sent) {
+  if (typeof sent !== 'number') return;
+  const lag = Math.max(0, sent - frames);
+  setSession({ lag, sent });
+  if (lag >= 50 && lag >= backlogLogged * 2) { backlogLogged = lag; logEvt('error', 'Frame backlog ' + lag + ' (sent ' + sent + ', shown ' + frames + ')'); }
+}
 
 // Emulator memory (WebAssembly heap: only ever grows). Kept in the session marker so a crash report shows it.
 let memMB = 0, memPeak = 0, memLogged = 0;
@@ -1058,7 +1069,7 @@ async function checkLastSession() {
   clearSession();
   if (!s || !s.gameId) return;
   const how = s.unloadedAt ? 'closed' : s.hiddenAt ? 'background' : 'crash';
-  logEvt(how === 'closed' ? 'info' : 'error', 'Previous session of ' + s.name + ' ended: ' + ({ closed: 'page closed/reloaded mid-game', background: 'discarded while in background', crash: 'page crashed while playing' })[how] + ' (last sign of life ' + new Date(s.beat).toLocaleTimeString() + (s.mem ? ', emulator memory ' + s.mem + ' MB' : '') + ')');
+  logEvt(how === 'closed' ? 'info' : 'error', 'Previous session of ' + s.name + ' ended: ' + ({ closed: 'page closed/reloaded mid-game', background: 'discarded while in background', crash: 'page crashed while playing' })[how] + ' (last sign of life ' + new Date(s.beat).toLocaleTimeString() + (s.mem ? ', emulator memory ' + s.mem + ' MB' : '') + (s.sent ? ', frames sent ' + s.sent + ', backlog ' + (s.lag || 0) : '') + ')');
   const latest = (await statesOf(s.gameId))[0];
   const box = document.createElement('div'); box.className = 'notice';
   box.textContent = ({
