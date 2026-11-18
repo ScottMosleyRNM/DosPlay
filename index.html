@@ -259,7 +259,7 @@ body:not(.playing) #controls { display: none; }
 <script>
 (() => { // own scope: js-dos.js declares many short global names ($, ci, p, …)
 'use strict';
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '2.1.1';
 const $ = id => document.getElementById(id);
 $('app-version').textContent = 'v' + APP_VERSION;
 function setStatus(s) { const v = $('app-version'); v.textContent = s || 'v' + APP_VERSION; v.classList.toggle('busy', !!s); }
@@ -337,8 +337,9 @@ function fmtAgo(ts) {
 (() => { let last = 0; document.addEventListener('touchend', e => { const n = Date.now(); if (n - last < 350) e.preventDefault(); last = n; }, { passive: false }); })();
 
 // ═════════════════════════════════════════════════════════════
-// Storage (IndexedDB "dosplay2", schema v2)
-//   games:     id → { id, name, bundle, disks, size, addedAt, lastPlayed }
+// Storage (IndexedDB "dosplay2", schema v3)
+//   games:     id → { id, name, disks, size, addedAt, lastPlayed }   (small: listing the library is cheap)
+//   bundles:   game id → Uint8Array (the game ZIP; only read when that game is launched)
 //   states:    autoId → { id, gameId, gameName, label, kind: 'manual'|'auto', savSize, size, createdAt, thumb }
 //   stateData: state id → Uint8Array (ZIP of changed files, incl. save/1.sav)
 //   saves/prev: v2.0 single-slot saves — copied into states once, then left untouched
@@ -348,11 +349,19 @@ const AUTO_KEEP = 5; // autosaves kept per game (manual saves are never auto-del
 let dbp = null;
 function db() {
   if (!dbp) dbp = new Promise((res, rej) => {
-    const r = indexedDB.open('dosplay2', 2);
+    const r = indexedDB.open('dosplay2', 3);
     r.onupgradeneeded = () => {
       const d = r.result;
-      ['games', 'saves', 'prev', 'stateData'].forEach(s => d.objectStoreNames.contains(s) || d.createObjectStore(s));
+      ['games', 'bundles', 'saves', 'prev', 'stateData'].forEach(s => d.objectStoreNames.contains(s) || d.createObjectStore(s));
       if (!d.objectStoreNames.contains('states')) d.createObjectStore('states', { keyPath: 'id', autoIncrement: true }).createIndex('gameId', 'gameId');
+      // v2 → v3: move game ZIPs out of the games records, one game at a time (keeps memory flat)
+      const t = r.transaction, gs = t.objectStore('games'), bs = t.objectStore('bundles');
+      gs.openCursor().onsuccess = e => {
+        const c = e.target.result; if (!c) return;
+        const g = c.value;
+        if (g && g.bundle) { bs.put(g.bundle, c.key); delete g.bundle; c.update(g); }
+        c.continue();
+      };
     };
     r.onblocked = () => toast('Close other DOS/PLAY tabs to finish updating', true);
     r.onsuccess = () => { const d = r.result; d.onversionchange = () => { d.close(); location.reload(); }; res(d); };
@@ -393,8 +402,9 @@ function addState(meta, data) {
 }
 const updateState = (id, patch) => tx('states', 'readwrite', st => { const r = st.get(id); r.onsuccess = () => { if (r.result) st.put(Object.assign(r.result, patch)); }; });
 const deleteState = id => tx(['states', 'stateData'], 'readwrite', (st, sd) => { st.delete(id); sd.delete(id); });
-const deleteGame = gameId => tx(['games', 'states', 'stateData', 'saves', 'prev'], 'readwrite', (g, st, sd, sv, pv) => {
-  g.delete(gameId); sv.delete(gameId); pv.delete(gameId);
+const putGame = (meta, bundle) => tx(['games', 'bundles'], 'readwrite', (g, b) => { b.put(bundle, meta.id); g.put(meta, meta.id); });
+const deleteGame = gameId => tx(['games', 'bundles', 'states', 'stateData', 'saves', 'prev'], 'readwrite', (g, b, st, sd, sv, pv) => {
+  g.delete(gameId); b.delete(gameId); sv.delete(gameId); pv.delete(gameId);
   const q = st.index('gameId').getAllKeys(gameId); q.onsuccess = () => q.result.forEach(id => { st.delete(id); sd.delete(id); });
 });
 // One-time: copy v2.0 single-slot saves (current + automatic backup) into the multi-save list
@@ -649,7 +659,10 @@ async function launch(id, stateId) {
     document.body.classList.add('playing');
     showLoad(meta ? 'RESTORING' : 'STARTING');
     frames = 0;
-    bundleUrl = URL.createObjectURL(new Blob([game.bundle], { type: 'application/zip' }));
+    let bundle = await dbGet('bundles', id);
+    if (!bundle) throw new Error('Game file is missing — remove it and add it again');
+    bundleUrl = URL.createObjectURL(new Blob([bundle], { type: 'application/zip' }));
+    bundle = null; // the Blob has its own copy
     const ready = new Promise((resolve, reject) => {
       const to = setTimeout(() => reject(new Error('Emulator did not start')), 60000);
       dosInstance = window.Dos($('dos-root'), {
@@ -883,7 +896,7 @@ async function addGameFile(file) {
   else if (/^(exe|com|bat)$/.test(ext)) bundle = bundleFromExe(bytes, file.name);
   else bundle = bundleFromFloppy(bytes);
   const name = file.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim();
-  await dbPut('games', id, { id, name, bundle, disks, size: bundle.length, addedAt: Date.now(), lastPlayed: 0 });
+  await putGame({ id, name, disks, size: bundle.length, addedAt: Date.now(), lastPlayed: 0 }, bundle);
   return id;
 }
 
@@ -1092,7 +1105,7 @@ async function importLegacyBundle(bytes, name) {
     if (!zipList(bytes).some(e => e.name.toLowerCase() === '.jsdos/dosbox.conf')) return false; // the broken diff-only ones
     const id = await hashId(bytes);
     if (await dbGet('games', id)) return false;
-    await dbPut('games', id, { id, name: name.replace(/\.jsdos$/i, '') + ' (from old save)', bundle: bytes, size: bytes.length, addedAt: Date.now(), lastPlayed: 0 });
+    await putGame({ id, name: name.replace(/\.jsdos$/i, '') + ' (from old save)', size: bytes.length, addedAt: Date.now(), lastPlayed: 0 }, bytes);
     return true;
   } catch (e) { return false; }
 }
