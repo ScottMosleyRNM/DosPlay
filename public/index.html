@@ -271,7 +271,7 @@ body.playing #game-wrap { bottom: calc(52px + var(--kbh)); }
 <script>
 (() => { // own scope: js-dos.js declares many short global names ($, ci, p, …)
 'use strict';
-const APP_VERSION = '2.2.0';
+const APP_VERSION = '2.2.1';
 const $ = id => document.getElementById(id);
 $('app-version').textContent = $('lib-version').textContent = 'v' + APP_VERSION;
 function setStatus(s) { const v = $('app-version'); v.textContent = s || 'v' + APP_VERSION; v.classList.toggle('busy', !!s); }
@@ -709,6 +709,7 @@ async function launch(id, stateId) {
       ci.sendBackendEvent({ type: 'wc-trigger-event', event: 'hand_loadstate' });
       await sleep(600);
       toast('↩ ' + meta.label + ' · ' + fmtWhen(meta.createdAt));
+      readMem(ci);
     } else {
       toast('▶ ' + game.name);
     }
@@ -777,7 +778,7 @@ async function saveState(opts = {}) {
     if (!label) label = kind === 'auto' ? 'Autosave' : 'Save ' + ((await statesOf(game.id)).filter(s => s.kind === 'manual').length + 1);
     const id = await addState({ gameId: game.id, gameName: game.name, label, kind, savSize: size, size: changes.length, createdAt: Date.now(), thumb }, changes);
     lastSaveAt = Date.now();
-    logEvt('info', (kind === 'auto' ? 'Autosaved' : 'Saved') + ' “' + label + '” (' + fmtSize(changes.length) + ')');
+    logEvt('info', (kind === 'auto' ? 'Autosaved' : 'Saved') + ' “' + label + '” (' + fmtSize(changes.length) + ', emulator memory ' + (await readMem(ci)) + ' MB)');
     if (kind === 'manual' && !opts.label) toast('💾 Saved as “' + label + '” — tap to name it', false, () => renameState(id, label));
     else if (kind === 'manual') toast('💾 Saved “' + label + '”');
     warnIfStorageLow();
@@ -806,7 +807,7 @@ async function loadState(id) {
     CI.sendBackendEvent({ type: 'wc-trigger-event', event: 'hand_loadstate' });
     await sleep(600);
     lastSaveAt = Date.now();
-    logEvt('info', 'Loaded “' + meta.label + '”');
+    logEvt('info', 'Loaded “' + meta.label + '” (emulator memory ' + (await readMem(CI)) + ' MB)');
     toast('↩ Loaded “' + meta.label + '”');
   } catch (e) { console.error(e); toast('Load failed: ' + (e.message || e), true); }
   finally { hideLoad(); busy = false; }
@@ -841,12 +842,28 @@ let wdMisses = 0, wdArmed = false, wdBusy = false, troubleOpen = false;
 setInterval(async () => {
   if (!CI || busy || wdBusy || document.hidden || troubleOpen) return;
   const ci = CI; wdBusy = true;
-  const ok = await Promise.race([ci.asyncifyStats().then(() => true, () => false), sleep(10000).then(() => false)]);
+  const st = await Promise.race([ci.asyncifyStats().then(s => s || {}, () => null), sleep(10000).then(() => null)]);
+  const ok = !!st;
   wdBusy = false;
+  if (st && st.heap) noteMem(st.heap);
   if (CI !== ci || document.hidden) return;
   if (ok) { wdArmed = true; wdMisses = 0; return; } // only judge once the ping is known to work
   if (wdArmed && ++wdMisses >= 2) emuTrouble('The emulator stopped responding.');
 }, 15000);
+
+// Emulator memory (WebAssembly heap: only ever grows). Kept in the session marker so a crash report shows it.
+let memMB = 0, memPeak = 0, memLogged = 0;
+function noteMem(bytes) {
+  memMB = Math.round(bytes / 1048576);
+  if (memMB > memPeak) memPeak = memMB;
+  setSession({ mem: memMB });
+  if (memMB >= memLogged + 32 || !memLogged) { memLogged = memMB; logEvt('info', 'Emulator memory ' + memMB + ' MB'); }
+}
+async function readMem(ci) {
+  const st = await Promise.race([ci.asyncifyStats().catch(() => null), sleep(3000).then(() => null)]);
+  if (st && st.heap) noteMem(st.heap);
+  return memMB;
+}
 
 async function emuTrouble(reason) {
   if (troubleOpen || !current) return;
@@ -1041,7 +1058,7 @@ async function checkLastSession() {
   clearSession();
   if (!s || !s.gameId) return;
   const how = s.unloadedAt ? 'closed' : s.hiddenAt ? 'background' : 'crash';
-  logEvt(how === 'closed' ? 'info' : 'error', 'Previous session of ' + s.name + ' ended: ' + ({ closed: 'page closed/reloaded mid-game', background: 'discarded while in background', crash: 'page crashed while playing' })[how] + ' (last sign of life ' + new Date(s.beat).toLocaleTimeString() + ')');
+  logEvt(how === 'closed' ? 'info' : 'error', 'Previous session of ' + s.name + ' ended: ' + ({ closed: 'page closed/reloaded mid-game', background: 'discarded while in background', crash: 'page crashed while playing' })[how] + ' (last sign of life ' + new Date(s.beat).toLocaleTimeString() + (s.mem ? ', emulator memory ' + s.mem + ' MB' : '') + ')');
   const latest = (await statesOf(s.gameId))[0];
   const box = document.createElement('div'); box.className = 'notice';
   box.textContent = ({
