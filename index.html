@@ -185,10 +185,11 @@ body.playing #game-wrap { bottom: calc(52px + var(--kbh)); }
       <div class="sbtn" id="export-btn">⬇ Back up saves</div>
       <div class="sbtn" id="import-btn">⬆ Restore backup</div>
     </div>
-    <div id="backup2" style="display:flex;gap:8px;justify-content:center;margin-bottom:6px">
+    <div id="backup2" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:6px;max-width:420px">
       <div class="sbtn ghost" id="log-btn">Diagnostics</div>
       <div class="sbtn ghost" id="storage-info"></div>
       <div class="sbtn ghost" id="sound-btn"></div>
+      <div class="sbtn ghost" id="gfx-btn"></div>
       <div class="sbtn ghost" id="lib-version"></div>
     </div>
   </div>
@@ -270,7 +271,7 @@ body.playing #game-wrap { bottom: calc(52px + var(--kbh)); }
 <script>
 (() => { // own scope: js-dos.js declares many short global names ($, ci, p, …)
 'use strict';
-const APP_VERSION = '2.2.6';
+const APP_VERSION = '2.2.7';
 const $ = id => document.getElementById(id);
 $('app-version').textContent = $('lib-version').textContent = 'v' + APP_VERSION;
 function setStatus(s) { const v = $('app-version'); v.textContent = s || 'v' + APP_VERSION; v.classList.toggle('busy', !!s); }
@@ -683,7 +684,7 @@ async function launch(id, stateId) {
         url: bundleUrl,
         pathPrefix: '/DosPlay/emulators/', backend: 'dosboxX', backendLocked: true,
         noCloud: true, noNetworking: true, workerThread: true, autoStart: true, kiosk: true,
-        thinSidebar: true, renderAspect: '4/3',
+        thinSidebar: true, renderAspect: '4/3', renderBackend: canvasGfx() ? 'canvas' : 'webgl',
         onEvent: (ev, ci) => {
           if (ev !== 'ci-ready') return;
           clearTimeout(to); CI = ci; bootAt = Date.now();
@@ -699,7 +700,7 @@ async function launch(id, stateId) {
     URL.revokeObjectURL(bundleUrl); bundleUrl = null; // bundle is loaded; don't keep a second copy alive
     current = { id, name: game.name };
     setSession({ gameId: id, name: game.name, startedAt: Date.now(), hiddenAt: 0 });
-    logEvt('info', 'Started ' + game.name + (meta ? ' from “' + meta.label + '”' : '') + (soundOff() ? ' (sound off)' : ''));
+    logEvt('info', 'Started ' + game.name + (meta ? ' from “' + meta.label + '”' : '') + [soundOff() && 'sound off', canvasGfx() && 'canvas graphics'].filter(Boolean).map(x => ' (' + x + ')').join(''));
     $('tabs').classList.toggle('multidisk', (game.disks || 1) > 1);
     tx('games', 'readwrite', st => { game.lastPlayed = Date.now(); st.put(game, id); }).catch(() => {});
 
@@ -1053,6 +1054,14 @@ showSoundBtn();
 $('sound-btn').onclick = () => {
   try { localStorage.setItem('dp.nosound', soundOff() ? '0' : '1'); } catch (e) {}
   showSoundBtn(); toast(soundOff() ? 'Sound off for games you start' : 'Sound on for games you start');
+};
+// Graphics: WebGL (default) or plain canvas (crash hunt: tests whether Safari's WebGL is what fills memory)
+function canvasGfx() { try { return localStorage.getItem('dp.canvas') === '1'; } catch (e) { return false; } }
+function showGfxBtn() { $('gfx-btn').textContent = canvasGfx() ? '🖼 Canvas' : '🖼 WebGL'; }
+showGfxBtn();
+$('gfx-btn').onclick = () => {
+  try { localStorage.setItem('dp.canvas', canvasGfx() ? '0' : '1'); } catch (e) {}
+  showGfxBtn(); toast(canvasGfx() ? 'Canvas graphics for games you start' : 'WebGL graphics for games you start');
 };
 $('log-btn').onclick = () => { $('log-text').textContent = logText(); $('log-scrim').classList.add('show'); };
 $('log-close').onclick = closeSheets;
